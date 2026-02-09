@@ -1,0 +1,27 @@
+# Test Case 5: Chronological Tie Resolution across Branches
+# A test to verify correct expansion order when nodes from different branches have equal priority values.
+# Predicted outcome:
+# - When cost, heuristic, and node ID are equal, nodes added earlier to the frontier must be expanded first.
+# - UCS, A*, and GBFS should preserve insertion order.
+# - Identifies bugs related to priority queue handling without chronological indexing.
+
+Nodes:
+1: (1,1)
+2: (2,1)
+3: (3,1)
+4: (4,1)
+5: (5,1)
+6: (3,3)
+
+Edges:
+(1,2): 1
+(2,3): 1
+(3,4): 1
+(4,5): 1
+(1,6): 10
+(6,5): 10
+
+Origin:
+1
+Destinations:
+5

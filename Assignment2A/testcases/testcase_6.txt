@@ -1,0 +1,27 @@
+# Test Case 6: Deceptive Heuristic Path
+# A test to analyze how heuristic-based algorithms behave when the heuristic is misleading.
+# Predicted outcome:
+# - GBFS is expected to choose a geometrically closer but higher-cost path.
+# - UCS and A* should correctly identify the lowest-cost route.
+# - Demonstrates the limitation of purely heuristic-driven search.
+
+Nodes:
+1: (1,1)
+2: (2,2)
+3: (3,3)
+4: (4,4)
+5: (5,5)
+6: (3,1)
+
+Edges:
+(1,2): 2
+(2,3): 2
+(3,4): 2
+(4,5): 2
+(1,6): 1
+(6,5): 20
+
+Origin:
+1
+Destinations:
+5
