@@ -1,0 +1,27 @@
+#Test Case 2: Cycle with Directed Exit
+#A test to evaluate how search algorithms handle cycles in a directed graph where only one valid exit exists.
+#Predicted outcome:
+#UCS, A*, and BFS should escape the cycle and reach the destination using correct loop handling.
+#DFS may explore deeper into the cycle before finding the exit, depending on expansion order.
+#GBFS may initially follow heuristic cues but must avoid infinite looping.
+#Confirms correct cycle prevention while respecting edge direction.
+
+Nodes:
+1: (0,0)
+2: (2,2)
+3: (4,0)
+4: (2,-2)
+5: (6,0)
+
+Edges:
+(1,2): 2
+(2,3): 2
+(3,4): 2
+(4,1): 2
+(3,5): 5
+
+Origin:
+1
+
+Destinations:
+5

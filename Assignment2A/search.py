@@ -4,6 +4,7 @@ import sys
 
 from algorithms.astar import astar
 from algorithms.cus2 import cus2
+from algorithms.cus1 import cus1
 from graph import Graph
 from parser import parse_input
 
@@ -26,6 +27,8 @@ def main():
         goal_node, nodes_created, path = astar(graph, origin, destinations)
     elif method == "CUS2":
         goal_node, nodes_created, path = cus2(graph, origin, destinations)
+    elif method == "CUS1":
+        goal_node, nodes_created, path = cus1(graph, origin, destinations)
     else:
         raise SystemExit(f"Unsupported method: {method}")
 
