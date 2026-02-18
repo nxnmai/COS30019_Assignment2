@@ -3,6 +3,7 @@
 import sys
 
 from algorithms.astar import astar
+from algorithms.gbfs import gbfs
 from algorithms.cus2 import cus2
 from algorithms.cus1 import cus1
 from graph import Graph
@@ -25,6 +26,8 @@ def main():
 
     if method == "AS":
         goal_node, nodes_created, path = astar(graph, origin, destinations)
+    elif method == "GBFS":
+        goal_node, nodes_created, path = gbfs(graph, origin, destinations)
     elif method == "CUS2":
         goal_node, nodes_created, path = cus2(graph, origin, destinations)
     elif method == "CUS1":

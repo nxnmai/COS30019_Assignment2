@@ -1,3 +1,10 @@
+# Test Case 1: Simple Baseline Path (Sanity Check)
+# A minimal linear graph used to verify basic functionality and correct input parsing.
+# Predicted outcome:
+# All algorithms should successfully find the only valid path to the destination.
+# Confirms correct parsing of nodes, edges, origin, and destination.
+# Any failure here indicates a fundamental implementation error.
+
 Nodes:
 1: (0,0)
 2: (2,0)
