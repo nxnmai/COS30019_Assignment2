@@ -26,8 +26,9 @@ def _build_path(goal_node):
 def cus2(graph, origin, destinations):
     destination_set = set(destinations)
     root = {"id": origin, "parent": None, "depth": 0}
-    # Count root as a created node.
+    # Count unique graph nodes created, including the root.
     nodes_created = 1
+    created_ids = {origin}
 
     if origin in destination_set:
         return root, nodes_created, [origin]
@@ -58,6 +59,8 @@ def cus2(graph, origin, destinations):
             f = child["depth"] + h_steps
             frontier.push(f, neighbor, insertion_order, child)
             insertion_order += 1
-            nodes_created += 1
+            if neighbor not in created_ids:
+                created_ids.add(neighbor)
+                nodes_created += 1
 
     return None, nodes_created, None
