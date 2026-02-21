@@ -1,0 +1,36 @@
+#Test Case 11: Isolated Destination Node (No Valid Path)
+#A test where the destination node is completely disconnected from the origin.
+#Predicted outcome:
+#All algorithms should terminate gracefully and report that no valid path exists.
+#No algorithm should enter an infinite loop or crash.
+#Confirms proper handling of unsolvable search problems.
+
+Nodes:
+1: (4,1)
+2: (2,2)
+3: (4,4)
+4: (6,3)
+5: (5,6)
+6: (7,5)
+7: (9,9)
+
+Edges:
+(2,1): 4
+(3,1): 5
+(1,3): 5
+(2,3): 4
+(3,2): 5
+(4,1): 6
+(1,4): 6
+(4,3): 5
+(3,5): 6
+(5,3): 6
+(4,5): 7
+(5,4): 8
+(6,3): 7
+(3,6): 7
+
+Origin:
+2
+Destinations:
+7
