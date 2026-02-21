@@ -11,7 +11,7 @@ from parser import parse_input
 
 
 def _format_path(path_list):
-    return " ".join(str(node_id) for node_id in path_list)
+    return ", ".join(str(node_id) for node_id in path_list)
 
 
 def main():

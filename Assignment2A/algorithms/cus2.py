@@ -26,7 +26,8 @@ def _build_path(goal_node):
 def cus2(graph, origin, destinations):
     destination_set = set(destinations)
     root = {"id": origin, "parent": None, "depth": 0}
-    nodes_created = 0
+    # Count root as a created node.
+    nodes_created = 1
 
     if origin in destination_set:
         return root, nodes_created, [origin]
