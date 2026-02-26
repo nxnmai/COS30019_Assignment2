@@ -6,6 +6,8 @@ from algorithms.astar import astar
 from algorithms.gbfs import gbfs
 from algorithms.cus2 import cus2
 from algorithms.cus1 import cus1
+from algorithms.dfs import dfs
+from algorithms.bfs import bfs
 from graph import Graph
 from parser import parse_input
 
@@ -32,6 +34,10 @@ def main():
         goal_node, nodes_created, path = cus2(graph, origin, destinations)
     elif method == "CUS1":
         goal_node, nodes_created, path = cus1(graph, origin, destinations)
+    elif method == "DFS":
+        goal_node, nodes_created, path = dfs(graph, origin, destinations)
+    elif method == "BFS":
+        goal_node, nodes_created, path = bfs(graph, origin, destinations)
     else:
         raise SystemExit(f"Unsupported method: {method}")
 
