@@ -20,9 +20,13 @@ def _build_path(goal_node):
 def cus1(graph, origin, destinations):
     destination_set = set(destinations)
     root = {"id": origin, "parent": None, "g": 0}
+<<<<<<< HEAD
     # track unique graph nodes created (root counts as one)
     nodes_created = 1
     created_ids = {origin}
+=======
+    nodes_created = 1
+>>>>>>> e8d1ef09a5eb4f30a440cb13b8b3dbdf05cba291
     
     if origin in destination_set:
         return root, nodes_created, [origin]
