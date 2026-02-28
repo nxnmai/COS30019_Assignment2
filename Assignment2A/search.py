@@ -15,6 +15,32 @@ from parser import parse_input
 def _format_path(path_list):
     return ", ".join(str(node_id) for node_id in path_list)
 
+def compute_path_cost(graph, path):
+    """
+    Compute total cost of a path based on the graph's adjacency list.
+    Assumes graph.adj[u] is iterable of (v, cost) pairs.
+    """
+    if path is None or len(path) < 2:
+        return 0.0
+
+    total = 0.0
+
+    for i in range(len(path) - 1):
+        u = path[i]
+        v = path[i + 1]
+
+        # Look up the cost of the directed edge u -> v
+        found = False
+        for (nbr, cost) in graph.adj.get(u, []):
+            if nbr == v:
+                total += float(cost)
+                found = True
+                break
+
+        if not found:
+            raise ValueError(f"No edge found in graph for path segment {u} -> {v}")
+
+    return total
 
 def main():
     if len(sys.argv) != 3:
@@ -48,6 +74,11 @@ def main():
     else:
         print(f"{goal_node['id']} {nodes_created}")
         print(_format_path(path))
+
+    if path is not None:
+        print(f"Total cost: {compute_path_cost(graph, path)}")
+    else:
+        print("Total cost: None")
 
 
 if __name__ == "__main__":
