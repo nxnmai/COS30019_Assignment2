@@ -15,6 +15,7 @@ from parser import parse_input
 def _format_path(path_list):
     return ", ".join(str(node_id) for node_id in path_list)
 
+# Helper function to compute total cost of a path
 def compute_path_cost(graph, path):
     """
     Compute total cost of a path based on the graph's adjacency list.
@@ -75,10 +76,10 @@ def main():
         print(f"{goal_node['id']} {nodes_created}")
         print(_format_path(path))
 
-    if path is not None:
-        print(f"Total cost: {compute_path_cost(graph, path)}")
-    else:
-        print("Total cost: None")
+    # if path is not None:
+    #     print(f"Total cost: {compute_path_cost(graph, path)}")
+    # else:
+    #     print("Total cost: None")
 
 
 if __name__ == "__main__":
