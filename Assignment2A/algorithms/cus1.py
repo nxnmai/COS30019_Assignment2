@@ -20,7 +20,7 @@ def _build_path(goal_node):
 def cus1(graph, origin, destinations):
     destination_set = set(destinations)
     root = {"id": origin, "parent": None, "g": 0}
-    nodes_created = 0
+    nodes_created = 1
     
     if origin in destination_set:
         return root, nodes_created, [origin]
