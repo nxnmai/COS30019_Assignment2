@@ -20,7 +20,9 @@ def _build_path(goal_node):
 def cus1(graph, origin, destinations):
     destination_set = set(destinations)
     root = {"id": origin, "parent": None, "g": 0}
-    nodes_created = 0
+    # track unique graph nodes created (root counts as one)
+    nodes_created = 1
+    created_ids = {origin}
     
     if origin in destination_set:
         return root, nodes_created, [origin]
@@ -47,7 +49,10 @@ def cus1(graph, origin, destinations):
                 continue
             
             child = {"id": neighbor, "parent": current, "g": g}
+            # increment counter only when we see a new graph node id
+            if neighbor not in created_ids:
+                created_ids.add(neighbor)
+                nodes_created += 1
             frontier.push(child["g"], neighbor, insertion_order, child)
             insertion_order += 1
-            nodes_created += 1
     return None, nodes_created, None

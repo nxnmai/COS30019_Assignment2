@@ -13,13 +13,13 @@ def _build_path(goal_node):
     path.reverse()
     return path
 
-def _is_ancestor(node, target_id):
-    current = node
-    while current is not None:
-        if current["id"] == target_id:
-            return True
-        current = current["parent"]
-    return False
+# def _is_ancestor(node, target_id):
+#     current = node
+#     while current is not None:
+#         if current["id"] == target_id:
+#             return True
+#         current = current["parent"]
+#     return False
 
 def gbfs(graph, origin, destinations):
     destination_set = set(destinations)
@@ -34,7 +34,9 @@ def gbfs(graph, origin, destinations):
     
     root_h = calculate_h(origin)
     root = {"id": origin, "parent": None, "h": root_h}
+    # count unique graph nodes created
     nodes_created = 1
+    created_ids = {origin}
 
     if origin in destination_set:
         return root, nodes_created, [origin]
@@ -57,8 +59,8 @@ def gbfs(graph, origin, destinations):
         explored.add(current["id"])
 
         for neighbor, _ in graph.get_neighbors(current["id"]):
-            if _is_ancestor(current, neighbor):
-                continue
+            # if _is_ancestor(current, neighbor):
+            #     continue
         
             if neighbor not in explored:
                 h_neighbor = calculate_h(neighbor)
@@ -70,6 +72,8 @@ def gbfs(graph, origin, destinations):
                 # Tie-breaking: h(n) -> neighbor_id -> insertion_order
                 frontier.push(child["h"], neighbor, insertion_order, child)
                 insertion_order += 1
-                nodes_created += 1
+                if neighbor not in created_ids:
+                    created_ids.add(neighbor)
+                    nodes_created += 1
 
     return None, nodes_created, None
