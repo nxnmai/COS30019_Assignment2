@@ -1,4 +1,4 @@
-"""LSTM model for one-step-ahead traffic flow regression."""
+"""Bidirectional LSTM (BiLSTM) model for one-step-ahead traffic flow regression."""
 from __future__ import annotations
 
 from typing import Any, Dict
@@ -8,9 +8,13 @@ from models.base_model import BaseTimeSeriesModel, _require_torch, nn, torch
 
 if torch is not None:
 
-    class LSTMRegressor(BaseTimeSeriesModel):
+    class BiLSTMRegressor(BaseTimeSeriesModel):
         """
-        Stacked LSTM for one-step-ahead traffic flow regression.
+        Stacked Bidirectional LSTM for one-step-ahead traffic flow regression.
+
+        Processes the input sequence in both forward and backward directions,
+        doubling the effective representation width. This captures both
+        historical momentum and future-context patterns within the lookback window.
 
         Input shape:  (batch, seq_len, input_dim)
         Output shape: (batch, 1)
@@ -29,15 +33,18 @@ if torch is not None:
             self.num_layers = num_layers
             self.dropout_rate = dropout
 
-            self.lstm = nn.LSTM(
+            # bidirectional=True → output dim = hidden_size * 2
+            self.bilstm = nn.LSTM(
                 input_size=input_dim,
                 hidden_size=hidden_size,
                 num_layers=num_layers,
                 batch_first=True,
+                bidirectional=True,
                 dropout=dropout if num_layers > 1 else 0.0,
             )
             self.dropout = nn.Dropout(dropout)
-            self.fc = nn.Linear(hidden_size, 1)
+            # input to fc is 2× hidden_size (forward + backward)
+            self.fc = nn.Linear(hidden_size * 2, 1)
 
         def get_init_kwargs(self) -> Dict[str, Any]:
             return {
@@ -51,14 +58,14 @@ if torch is not None:
             # x: (batch, seq_len) or (batch, seq_len, input_dim)
             if x.ndim == 2:
                 x = x.unsqueeze(-1)
-            out, _ = self.lstm(x)          # (batch, seq_len, hidden_size)
-            last = out[:, -1, :]           # take last timestep
+            out, _ = self.bilstm(x)        # (batch, seq_len, hidden_size * 2)
+            last = out[:, -1, :]           # last timestep (both directions)
             last = self.dropout(last)
             return self.fc(last)           # (batch, 1)
 
 
 else:
 
-    class LSTMRegressor(BaseTimeSeriesModel):  # pragma: no cover
+    class BiLSTMRegressor(BaseTimeSeriesModel):  # pragma: no cover
         def __init__(self, *args, **kwargs) -> None:
             _require_torch()

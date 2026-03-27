@@ -42,6 +42,11 @@ MODEL_SPECS: Dict[str, Dict[str, object]] = {
         "class_candidates": ["GRURegressor", "GRUModel", "GRU"],
         "checkpoint_key": "gru_checkpoint",
     },
+    "bilstm": {
+        "module": "models.bilstm_model",
+        "class_candidates": ["BiLSTMRegressor"],
+        "checkpoint_key": "bilstm_checkpoint",
+    },
 }
 
 
