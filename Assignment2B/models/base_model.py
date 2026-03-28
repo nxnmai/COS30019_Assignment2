@@ -166,7 +166,8 @@ if torch is not None:
                 if config.verbose:
                     print(
                         f"Epoch {epoch:03d}/{config.epochs} "
-                        f"train_loss={train_loss:.6f} val_loss={val_loss:.6f}"
+                        f"train_loss={train_loss:.6f} val_loss={val_loss:.6f}",
+                        flush=True,
                     )
 
                 if config.patience > 0 and epochs_without_improvement >= config.patience:

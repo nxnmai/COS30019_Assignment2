@@ -145,7 +145,14 @@ def _build_profiles(df: pd.DataFrame) -> Tuple[Dict[str, np.ndarray], Dict[str, 
         stream_profiles[str(stream_id)] = np.nan_to_num(profile, nan=0.0)
 
     for site_id, group in df.groupby("scats_number", sort=True):
-        profile = np.nanmean(group[FLOW_COLUMNS].to_numpy(dtype=np.float64), axis=0)
+        # Accumulated volume per hour at the site = SUM of all movements
+        # We perform sum across movements for each 15-min interval
+        # Then we will multiply by 4 later to get veh/hr
+        profile = np.nansum(group.groupby("date")[FLOW_COLUMNS].sum().to_numpy(dtype=np.float64), axis=0)
+        # Wait, the above is wrong. We want the AVERAGE daily profile of the TOTAL flow.
+        # So first sum all movements for each day/interval, then average across days.
+        daily_site_totals = group.groupby("date")[FLOW_COLUMNS].sum()
+        profile = np.nanmean(daily_site_totals.to_numpy(dtype=np.float64), axis=0)
         site_profiles[str(site_id)] = np.nan_to_num(profile, nan=0.0)
 
     if stream_profiles:
@@ -245,10 +252,11 @@ def _predict_edge_flow(
     scaler: Optional[Any],
     device: str,
 ) -> float:
-    if edge.stream_id and edge.stream_id in stream_profiles:
+    # Per assignment instructions, use the accumulated volume at Site B (target)
+    if edge.target in site_profiles:
+        profile = site_profiles[edge.target]
+    elif edge.stream_id and edge.stream_id in stream_profiles:
         profile = stream_profiles[edge.stream_id]
-    elif edge.source in site_profiles:
-        profile = site_profiles[edge.source]
     else:
         profile = global_profile
 
@@ -367,7 +375,8 @@ def find_routes(
     datetime: str | datetime,
     model: str = "transformer",
     k: int = 5,
-) -> List[Dict[str, Any]]:
+    return_network: bool = False,
+) -> Dict[str, Any]:
     """
     Main integration API expected by the assignment brief.
 
@@ -401,7 +410,7 @@ def find_routes(
     edge_weights: Dict[Tuple[str, str], float] = {}
     edge_flow: Dict[Tuple[str, str], float] = {}
     for edge in edges:
-        flow = _predict_edge_flow(
+        flow_15min = _predict_edge_flow(
             edge=edge,
             interval_index=interval_idx,
             lookback=lookback,
@@ -412,8 +421,11 @@ def find_routes(
             scaler=scaler,
             device=device,
         )
+        # Convert 15-minute count to vehicles per hour for the formula
+        flow_veh_per_hour = flow_15min * 4.0
+
         time_sec = travel_time_seconds(
-            flow_veh_per_hour=flow,
+            flow_veh_per_hour=flow_veh_per_hour,
             distance_km=edge.distance_km,
             intersection_delay_sec=intersection_delay,
             intersections_count=edge.intersections,
@@ -422,7 +434,7 @@ def find_routes(
             min_speed_kmh=min_speed,
         )
         edge_weights[(edge.source, edge.target)] = float(time_sec)
-        edge_flow[(edge.source, edge.target)] = float(flow)
+        edge_flow[(edge.source, edge.target)] = float(flow_veh_per_hour)
 
     adjacency = _build_weighted_adjacency(edges, edge_weights, undirected=undirected)
 
@@ -463,7 +475,28 @@ def find_routes(
             }
         )
 
-    return results
+    if not return_network:
+        return results
+
+    # Extraction of node coordinates for the map
+    node_coords = {}
+    for edge in edges:
+        for nid in (edge.source, edge.target):
+            if nid not in node_coords:
+                match = flow_df[flow_df["scats_number"] == nid]
+                if not match.empty:
+                    node_coords[nid] = (
+                        float(match.iloc[0]["nb_latitude"]),
+                        float(match.iloc[0]["nb_longitude"]),
+                    )
+
+    return {
+        "routes": results,
+        "edges": edges,
+        "edge_flow": edge_flow,
+        "edge_weights": edge_weights,
+        "node_coords": node_coords,
+    }
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:

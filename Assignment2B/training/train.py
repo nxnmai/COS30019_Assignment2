@@ -165,9 +165,9 @@ def train(
 
     # Summary
     best_val = min(history["val_loss"]) if history["val_loss"] else float("nan")
-    print(f"\n[DONE] {model_name.upper()} training complete in {elapsed:.1f}s")
-    print(f"       Best val_loss = {best_val:.6f}")
-    print(f"       Checkpoint saved → {checkpoint_path}\n")
+    print(f"\n[DONE] {model_name.upper()} training complete in {elapsed:.1f}s", flush=True)
+    print(f"       Best val_loss = {best_val:.6f}", flush=True)
+    print(f"       Checkpoint saved -> {checkpoint_path}\n", flush=True)
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:

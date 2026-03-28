@@ -19,6 +19,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import streamlit as st
+from streamlit_folium import st_folium
+import map_utils
 
 # ── project root on sys.path ─────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -282,18 +284,20 @@ with tab1:
             if origin_id == dest_id:
                 st.error("Origin and destination must be different.")
             else:
-                with st.spinner(f"Computing routes via **{selected_model.upper()}** model…"):
+                with st.spinner("Finding best routes and predicting traffic…"):
                     try:
                         from main import find_routes
-                        routes = find_routes(
+                        result = find_routes(
                             origin_id=origin_id,
                             dest_id=dest_id,
                             datetime=travel_dt,
                             model=selected_model,
                             k=top_k,
+                            return_network=True,
                         )
+                        routes = result["routes"]
                     except Exception as e:
-                        st.error(f"Route search failed: {e}")
+                        st.error(f"Routing error: {e}")
                         routes = []
 
                 if not routes:
@@ -322,7 +326,35 @@ with tab1:
                             unsafe_allow_html=True,
                         )
 
-                    # Segment detail expander for route 1
+                    # Advanced Visualization (Research Initiative)
+                    st.markdown("### 🗺️ Interactive Traffic & Route Map")
+                    
+                    # Calibration setting (Research initiative adjustment)
+                    with st.expander("🛠 Map Calibration (Research Initiative)"):
+                        st.info("SCATS coordinates often have slight offsets on Google Maps/OSM. Use these sliders to calibrate.")
+                        lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                        lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                    
+                    # Apply offset to coordinates
+                    calibrated_coords = {
+                        nid: (lat + lat_offset, lon + lon_offset)
+                        for nid, (lat, lon) in result["node_coords"].items()
+                    }
+
+                    # Create and display Folium map
+                    m = map_utils.create_traffic_map(
+                        edges=result["edges"],
+                        node_coords=calibrated_coords,
+                        edge_flow=result["edge_flow"],
+                        edge_weights=result["edge_weights"],
+                        center=calibrated_coords.get(origin_id, (-37.83, 145.07))
+                    )
+                    
+                    # Highlight paths
+                    m = map_utils.highlight_routes(m, routes, calibrated_coords)
+                    
+                    st_folium(m, width="100%", height=500, returned_objects=[])
+
                     with st.expander("🔎 Segment detail — Route 1"):
                         seg_rows = []
                         for seg in routes[0]["segments"]:
@@ -332,21 +364,7 @@ with tab1:
                                 "Flow (veh/hr)": f"{seg['predicted_flow_veh_per_hour']:.0f}" if seg["predicted_flow_veh_per_hour"] is not None else "—",
                                 "Time (sec)": f"{seg['travel_time_sec']:.1f}" if seg["travel_time_sec"] is not None else "—",
                             })
-                        st.dataframe(pd.DataFrame(seg_rows), use_container_width=True)
-
-                    # Map
-                    lat_col = sites.set_index("scats_number")["nb_latitude"].to_dict()
-                    lon_col = sites.set_index("scats_number")["nb_longitude"].to_dict()
-                    path_nodes = routes[0]["path"]
-                    map_points = [
-                        {"lat": lat_col.get(n), "lon": lon_col.get(n)}
-                        for n in path_nodes
-                        if lat_col.get(n) and lon_col.get(n)
-                    ]
-                    if map_points:
-                        map_df = pd.DataFrame(map_points)
-                        st.markdown("**📍 Best route (map)**")
-                        st.map(map_df, zoom=13)
+                        st.dataframe(pd.DataFrame(seg_rows), width="stretch")
         else:
             st.markdown(
                 """
@@ -470,6 +488,7 @@ with tab2:
             # Run training in subprocess so the GUI doesn't freeze
             cmd = [
                 sys.executable,
+                "-u",
                 str(PROJECT_ROOT / "training" / "train.py"),
                 "--model", train_model,
                 "--epochs", str(epochs),
@@ -520,7 +539,7 @@ with tab2:
                             )
                             with chart_placeholder.container():
                                 st.markdown("**Training Loss Curve**")
-                                st.line_chart(chart_df, use_container_width=True)
+                                st.line_chart(chart_df, width="stretch")
 
                     # Update log
                     log_placeholder.code("\n".join(log_lines[-30:]), language="bash")
@@ -612,26 +631,26 @@ with tab3:
                 color="rgba(74,222,128,0.2)",
             )
         )
-        st.dataframe(styled, use_container_width=True)
+        st.dataframe(styled, width="stretch")
 
         # Bar chart
         st.markdown("#### 📊 MAE / RMSE / MAPE Comparison")
         if "MAE" in metrics_df.columns and "MODEL" in metrics_df.columns:
             bar_data = metrics_df.set_index("MODEL")[["MAE", "RMSE"]].rename_axis("Model")
-            st.bar_chart(bar_data, use_container_width=True)
+            st.bar_chart(bar_data, width="stretch")
 
     # Predicted vs Actual plots
     pred_plot = eval_dir / "predicted_vs_actual.png"
     if pred_plot.exists():
         st.markdown("#### 📈 Predicted vs Actual (Test Set)")
-        st.image(str(pred_plot), use_column_width=True)
+        st.image(str(pred_plot), width="stretch")
 
     # Per-model plots
     for model_name in ["lstm", "gru", "bilstm", "transformer"]:
         per_plot = eval_dir / f"pred_vs_actual_{model_name}.png"
         if per_plot.exists():
             with st.expander(f"📉 {model_name.upper()} — Detailed plot"):
-                st.image(str(per_plot), use_column_width=True)
+                st.image(str(per_plot), width="stretch")
 
     if not metrics_csv.exists() and not eval_btn:
         st.markdown(
