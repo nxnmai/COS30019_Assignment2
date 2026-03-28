@@ -37,106 +37,300 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
+    :root {
+        --bg: #e6ddb0;
+        --paper: #efe7c0;
+        --olive: #8a9777;
+        --olive-dark: #667154;
+        --olive-soft: #9aa588;
+        --tan: #c99a57;
+        --tan-dark: #a87839;
+        --text: #5a5037;
+        --muted: #7e7357;
+        --blue-accent: #5a7f91;
+        --input-bg: #f3ecc7;
+        --dash: #8c9776;
+    }
 
-    /* Dark gradient background */
+    html, body, [class*="css"] {
+        font-family: 'Inter', sans-serif;
+        color: var(--text);
+    }
+
     .stApp {
-        background: linear-gradient(135deg, #0f0c29 0%, #1a1a3e 50%, #0d1b2a 100%);
-        color: #e0e0e0;
+        background:
+            radial-gradient(circle, rgba(120,110,85,0.20) 1.5px, transparent 1.6px) 0 0 / 24px 24px,
+            var(--bg);
+        color: var(--text);
     }
 
-    /* Tab bar */
+    [data-testid="stHeader"] {
+        background: transparent;
+    }
+
+    .block-container {
+        max-width: 1180px;
+        padding-top: 1.3rem;
+        padding-left: 2.2rem;
+        padding-right: 2.2rem;
+        padding-bottom: 2rem;
+    }
+
+    h1, h2, h3, .retro-title, .retro-nav-title {
+        font-family: 'Teko', sans-serif !important;
+        color: var(--text) !important;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+    }
+
+    h3 {
+        font-size: 2.15rem !important;
+        line-height: 1;
+        margin-bottom: 0.8rem;
+    }
+
+    /* Header */
+    .retro-header {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        margin-top: 0.2rem;
+        margin-bottom: 1.2rem;
+    }
+
+    .traffic-light {
+        width: 58px;
+        background: #252118;
+        border-radius: 8px;
+        padding: 9px 10px;
+        box-shadow: inset 0 0 0 2px #5f5339;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .traffic-light span {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        display: block;
+        margin: 0 auto;
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,0.12);
+    }
+
+    .light-red    { background: #d83d32; }
+    .light-yellow { background: #e0a020; }
+    .light-green  { background: #43b14a; }
+
+    .retro-title {
+        font-size: 3.15rem;
+        line-height: 0.9;
+        margin: 0;
+    }
+
+    .retro-subtitle {
+        font-family: 'Teko', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 0.7px;
+        font-size: 0.95rem;
+        color: var(--muted);
+        margin-top: 0.2rem;
+        text-align: center;
+    }
+
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
-        background: rgba(255,255,255,0.04);
-        border-radius: 12px;
-        padding: 6px;
+        gap: 14px;
+        background: transparent;
+        padding: 0;
+        margin-bottom: 1.1rem;
     }
+
     .stTabs [data-baseweb="tab"] {
-        border-radius: 10px;
-        padding: 10px 22px;
-        font-weight: 500;
-        font-size: 0.9rem;
-        color: #aaa;
-        transition: all 0.25s;
+        background: var(--tan);
+        border-radius: 999px;
+        padding: 8px 18px 7px;
+        border: 2px solid transparent;
+        color: #5f5035;
+        font-family: 'Teko', sans-serif !important;
+        font-size: 1.02rem;
+        font-weight: 600;
+        letter-spacing: 0.7px;
+        min-height: auto;
+        box-shadow: none !important;
     }
+
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #6c63ff, #48c6ef) !important;
-        color: white !important;
-        box-shadow: 0 4px 14px rgba(108,99,255,0.4);
+        background: var(--tan-dark) !important;
+        color: #fff6dc !important;
+        border-color: #86612c !important;
+        box-shadow: none !important;
     }
 
-    /* Cards */
-    .card {
-        background: rgba(255,255,255,0.05);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 16px;
-        padding: 20px 24px;
-        margin-bottom: 16px;
-        backdrop-filter: blur(10px);
+    /* Left form panel marker */
+    div[data-testid="stVerticalBlock"]:has(.planner-left-marker) {
+        background: var(--olive);
+        border-radius: 10px;
+        padding: 18px 18px 14px;
+        border: 1px solid #79856a;
     }
 
-    /* Route cards */
-    .route-card {
-        background: rgba(108,99,255,0.08);
-        border: 1px solid rgba(108,99,255,0.25);
+    /* Labels inside planner panel */
+    div[data-testid="stVerticalBlock"]:has(.planner-left-marker) label {
+        color: #f7f1d7 !important;
+        font-family: 'Teko', sans-serif !important;
+        text-transform: uppercase;
+        font-size: 1.05rem !important;
+        letter-spacing: 0.5px;
+    }
+
+    /* Select / date / time inputs */
+    div[data-baseweb="select"] > div {
+        background: var(--input-bg);
+        border: 2px solid #d8cf9c;
         border-radius: 14px;
-        padding: 16px 20px;
-        margin-bottom: 12px;
-        transition: all 0.3s;
-    }
-    .route-card:hover { border-color: #6c63ff; background: rgba(108,99,255,0.15); }
-    .route-rank { font-size: 1.4rem; font-weight: 700; color: #6c63ff; }
-    .route-time { font-size: 1.1rem; font-weight: 600; color: #48c6ef; }
-    .route-path { font-size: 0.82rem; color: #999; word-break: break-all; margin-top: 4px; }
-
-    /* Metric pills */
-    .metric-pill {
-        display: inline-block;
-        background: rgba(72,198,239,0.12);
-        border: 1px solid rgba(72,198,239,0.3);
-        border-radius: 20px;
-        padding: 4px 14px;
-        font-size: 0.8rem;
-        color: #48c6ef;
-        margin: 2px;
+        min-height: 40px;
+        color: var(--text);
+        box-shadow: none !important;
     }
 
-    /* Status badges */
-    .badge-ok   { background:#1a4731; color:#4ade80; border-radius:8px; padding:3px 10px; font-size:0.78rem; }
-    .badge-warn { background:#3d2b00; color:#fbbf24; border-radius:8px; padding:3px 10px; font-size:0.78rem; }
-    .badge-err  { background:#3b1212; color:#f87171; border-radius:8px; padding:3px 10px; font-size:0.78rem; }
+    .stDateInput > div > div,
+    .stTimeInput > div > div {
+        background: var(--input-bg);
+        border: 2px solid #d8cf9c;
+        border-radius: 14px;
+        box-shadow: none !important;
+    }
 
-    /* Input labels */
-    label { color: #ccc !important; font-size: 0.88rem !important; }
+    .stDateInput input,
+    .stTimeInput input {
+        color: var(--text) !important;
+        background: transparent !important;
+    }
+
+    /* Slider */
+    [data-testid="stSlider"] {
+        padding-top: 0.1rem;
+    }
+
+    [data-testid="stSlider"] [role="slider"] {
+        background: var(--tan) !important;
+        border: 2px solid #bb8947 !important;
+        box-shadow: none !important;
+    }
 
     /* Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #6c63ff, #48c6ef);
-        color: white;
+        background: #f2e8bf;
+        color: var(--blue-accent);
         border: none;
-        border-radius: 10px;
-        padding: 10px 28px;
+        border-radius: 999px;
+        padding: 0.28rem 1.1rem;
+        font-family: 'Teko', sans-serif !important;
+        font-size: 1.05rem;
         font-weight: 600;
-        font-size: 0.9rem;
-        transition: all 0.2s;
-        width: 100%;
+        letter-spacing: 0.7px;
+        box-shadow: none !important;
+        width: 150px;
+        display: block;
+        margin: 0.6rem auto 0 auto;
     }
+
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(108,99,255,0.45);
+        background: #fbf2cd;
+        color: #496d7f;
+        transform: none !important;
+        box-shadow: none !important;
     }
 
-    /* Dataframes */
-    .stDataFrame { border-radius: 12px; overflow: hidden; }
+    /* Placeholder / preview panel */
+    .planner-preview {
+        min-height: 340px;
+        border: 2.5px dashed var(--dash);
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: var(--olive-dark);
+        font-family: 'Teko', sans-serif;
+        font-size: 1.15rem;
+        line-height: 1.05;
+        background: rgba(255,255,255,0.08);
+        padding: 1rem;
+    }
 
-    /* Dividers */
-    hr { border-color: rgba(255,255,255,0.08); }
+    /* Route result cards */
+    .route-card {
+        background: rgba(255, 248, 223, 0.72);
+        border: 2px solid #cdbd87;
+        border-radius: 12px;
+        padding: 16px 18px;
+        margin-bottom: 12px;
+        box-shadow: none;
+    }
 
-    /* Section headers */
-    h1, h2, h3 { color: #fff !important; }
+    .route-rank {
+        font-family: 'Teko', sans-serif !important;
+        font-size: 1.45rem;
+        color: var(--text);
+    }
+
+    .route-time {
+        font-family: 'Teko', sans-serif !important;
+        font-size: 1.25rem;
+        color: var(--blue-accent);
+    }
+
+    .route-path {
+        font-size: 0.85rem;
+        color: var(--muted);
+        word-break: break-word;
+        margin-top: 4px;
+    }
+
+    .metric-pill {
+        display: inline-block;
+        background: #d7bf88;
+        color: #5d533d;
+        border-radius: 999px;
+        padding: 4px 12px;
+        font-family: 'Teko', sans-serif;
+        font-size: 0.92rem;
+        letter-spacing: 0.4px;
+        margin: 2px;
+        border: none;
+    }
+
+    /* Formula card */
+    .formula-card {
+        background: rgba(255, 248, 223, 0.55);
+        border: 2px solid #d4c38d;
+        border-radius: 12px;
+        padding: 14px 16px;
+        margin-top: 14px;
+    }
+
+    .formula-code {
+        font-family: monospace;
+        color: var(--olive-dark);
+        font-size: 0.86rem;
+        margin-top: 5px;
+    }
+
+    /* Dataframes and alerts */
+    .stDataFrame {
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    [data-testid="stAlert"] {
+        border-radius: 10px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
