@@ -10,5 +10,7 @@ streamlit run gui/app.py
 
 # OR train from CLI:
 python training/train.py --model lstm --epochs 100
+
 python training/train.py --model gru --epochs 100
+
 python training/train.py --model bilstm --epochs 100
