@@ -2,6 +2,8 @@
   "dataset_path": "F:\\github-project\\COS30019_Assignment2\\Assignment2B\\data\\processed\\datasets.npz",
   "scaler_path": "F:\\github-project\\COS30019_Assignment2\\Assignment2B\\data\\processed\\scaler.pkl",
   "evaluated_models": [
+    "lstm",
+    "gru",
     "bilstm"
   ],
   "metrics_csv": "F:\\github-project\\COS30019_Assignment2\\Assignment2B\\data\\processed\\evaluation\\metrics_table.csv",
