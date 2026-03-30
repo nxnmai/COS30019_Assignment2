@@ -26,18 +26,20 @@ def load_test_context(model_name: str):
         raise e
 
     # 2. Load dataset
-    data_dir = PROJECT_ROOT / "data" / "processed"
-    ds_path = data_dir / "test_dataset.npz"
+    ds_rel_path = cfg.get("paths", "dataset_npz", fallback="data/processed/datasets.npz")
+    ds_path = PROJECT_ROOT / ds_rel_path
     
     if not ds_path.exists():
         raise FileNotFoundError(f"Test dataset not found at {ds_path}. Please run feature engineering first.")
         
     ds = np.load(ds_path)
-    x_test = ds["x"]
-    y_test = ds["y"]
+    # Correct keys as per train.py loader
+    x_test = ds["test_x"]
+    y_test = ds["test_y"]
     
     # 3. Load full dataframe for time-based tests (TC04, TC05)
-    csv_path = PROJECT_ROOT / cfg.get("paths", "clean_scats_csv", fallback="data/processed/clean_scats_data.csv")
+    csv_rel_path = cfg.get("paths", "clean_scats_csv", fallback="data/processed/scats_oct2006_clean.csv")
+    csv_path = PROJECT_ROOT / csv_rel_path
     if csv_path.exists():
         # Only load a slice or just enough to match x_test
         # Usually x_test matches the end of the dataframe

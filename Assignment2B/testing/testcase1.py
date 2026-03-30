@@ -112,15 +112,15 @@ if __name__ == "__main__":
     
     try:
         # Load model class by name
-        module_name = f"models.{model_name}"
+        module_name = f"models.{model_name}_model"
         module = importlib.import_module(module_name)
         
         if model_name == "bilstm":
-            class_name = "BiLSTMModel"
+            class_name = "BiLSTMRegressor" # Use Regressor as per registry
         elif model_name == "transformer":
-            class_name = "TransformerModel"
+            class_name = "TransformerRegressor"
         else:
-            class_name = f"{model_name.upper()}Model"
+            class_name = f"{model_name.upper()}Regressor"
             
         model_class = getattr(module, class_name)
         
