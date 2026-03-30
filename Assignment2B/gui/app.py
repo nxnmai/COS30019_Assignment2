@@ -35,6 +35,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
+# ── Session state initialization ──────────────────────────────────────────────
+if "route_result" not in st.session_state:
+    st.session_state.route_result = None
+if "route_dt" not in st.session_state:
+    st.session_state.route_dt = None
+if "calibrated_coords" not in st.session_state:
+    st.session_state.calibrated_coords = None
+
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown(
     """
@@ -411,8 +419,8 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-tab1, tab2, tab3, tab4 = st.tabs(
-    ["🗺️ Route Planner", "🧠 Train Models", "📊 Evaluate", "⚙️ Settings"]
+tab1, tab2, tab3, tab4, tab5 = st.tabs(
+    ["🗺️ Route Planner", "🧠 Train Models", "📊 Evaluate", "⚙️ Settings", "🧪 Test Suite"]
 )
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -469,7 +477,6 @@ with tab1:
         find_btn = st.button("🔍 Find Routes", key="find_routes_btn", disabled=no_sites)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    with col_r:
         if find_btn and not no_sites:
             origin_id = origin_sel.split(" — ")[0].strip()
             dest_id = dest_sel.split(" — ")[0].strip()
@@ -478,7 +485,7 @@ with tab1:
             if origin_id == dest_id:
                 st.error("Origin and destination must be different.")
             else:
-                with st.spinner("Finding best routes and predicting traffic…"):
+                with st.spinner("🔍 Calculating optimal routes based on predicted traffic..."):
                     try:
                         from main import find_routes
                         result = find_routes(
@@ -489,77 +496,35 @@ with tab1:
                             k=top_k,
                             return_network=True,
                         )
-                        routes = result["routes"]
+                        # --- Persistence Store ---
+                        st.session_state.route_result = result
+                        st.session_state.route_dt = travel_dt
                     except Exception as e:
                         st.error(f"Routing error: {e}")
-                        routes = []
+                        st.session_state.route_result = None
 
-                if not routes:
-                    st.warning("No routes found between the selected sites. Try different sites or check the graph edges CSV.")
+        if not no_sites:
+            with st.expander("🌐 Current Road Network Connectivity"):
+                st.markdown(
+                    """
+                    **Note:** The system uses a graph-based road network inferred from SCATS sensor locations. 
+                    Connections are made primarily between sensors on the same road (up to 2km apart) or nearby 
+                    intersections (within 0.5km). Use the table below to verify paths.
+                    """
+                )
+                edges_path = _resolve(cfg, "graph_edges_csv")
+                if edges_path.exists():
+                    e_df = pd.read_csv(edges_path)
+                    st.dataframe(e_df, height=300, width="stretch")
                 else:
-                    st.markdown(f"**{len(routes)} route(s) found** — {travel_dt.strftime('%A %d %b %Y, %H:%M')}")
-                    rank_colors = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+                    st.warning("Graph edges file not found. Rebuild it in Settings.")
 
-                    for i, route in enumerate(routes):
-                        mins = route["total_time_min"]
-                        path_str = " → ".join(route["path"])
-                        n_segs = len(route["segments"])
-                        st.markdown(
-                            f"""
-                            <div class="route-card">
-                                <span class="route-rank">{rank_colors[i]} Route {i+1}</span>
-                                <span class="route-time" style="float:right">{mins:.1f} min</span>
-                                <div class="route-path">{path_str}</div>
-                                <div style="margin-top:8px">
-                                    <span class="metric-pill">⛓ {n_segs} segments</span>
-                                    <span class="metric-pill">🤖 {route['model_used'].upper()}</span>
-                                    <span class="metric-pill">⏱ {route['total_time_sec']:.0f} sec</span>
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True,
-                        )
+    with col_r:
+        # --- Persistence Render ---
+        result = st.session_state.route_result
+        travel_dt = st.session_state.route_dt
 
-                    # Advanced Visualization (Research Initiative)
-                    st.markdown("### 🗺️ Interactive Traffic & Route Map")
-                    
-                    # Calibration setting (Research initiative adjustment)
-                    with st.expander("🛠 Map Calibration (Research Initiative)"):
-                        st.info("SCATS coordinates often have slight offsets on Google Maps/OSM. Use these sliders to calibrate.")
-                        lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
-                        lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
-                    
-                    # Apply offset to coordinates
-                    calibrated_coords = {
-                        nid: (lat + lat_offset, lon + lon_offset)
-                        for nid, (lat, lon) in result["node_coords"].items()
-                    }
-
-                    # Create and display Folium map
-                    m = map_utils.create_traffic_map(
-                        edges=result["edges"],
-                        node_coords=calibrated_coords,
-                        edge_flow=result["edge_flow"],
-                        edge_weights=result["edge_weights"],
-                        center=calibrated_coords.get(origin_id, (-37.83, 145.07))
-                    )
-                    
-                    # Highlight paths
-                    m = map_utils.highlight_routes(m, routes, calibrated_coords)
-                    
-                    st_folium(m, width="100%", height=500, returned_objects=[])
-
-                    with st.expander("🔎 Segment detail — Route 1"):
-                        seg_rows = []
-                        for seg in routes[0]["segments"]:
-                            seg_rows.append({
-                                "From": seg["from"],
-                                "To": seg["to"],
-                                "Flow (veh/hr)": f"{seg['predicted_flow_veh_per_hour']:.0f}" if seg["predicted_flow_veh_per_hour"] is not None else "—",
-                                "Time (sec)": f"{seg['travel_time_sec']:.1f}" if seg["travel_time_sec"] is not None else "—",
-                            })
-                        st.dataframe(pd.DataFrame(seg_rows), width="stretch")
-        else:
+        if not result:
             st.markdown(
                 """
                 <div style="display:flex; align-items:center; justify-content:center;
@@ -571,6 +536,96 @@ with tab1:
                 """,
                 unsafe_allow_html=True,
             )
+        else:
+            routes = result["routes"]
+            if not routes:
+                st.warning(
+                    """
+                    ⚠️ **No routes found between these sites.** 
+                    
+                    SCATS sites in this dataset represent fixed sensors in the Boroondara area. 
+                    A route can only be found if a physical path exists between sensors in our road network graph.
+                    
+                    **Suggestions:**
+                    - Check the **'Current Road Network Connectivity'** table below to see which sites are connected.
+                    - Try selecting sites that are closer together along the same main road (e.g. High St).
+                    - Use the **Settings** tab to **'Rebuild Graph Edges'** if you have recently changed connectivity parameters.
+                    """
+                )
+            else:
+                st.markdown(f"**{len(routes)} route(s) found** — {travel_dt.strftime('%A %d %b %Y, %H:%M')}")
+                rank_colors = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣", "🔟"]
+
+                for i, route in enumerate(routes):
+                    mins = route["total_time_min"]
+                    path_str = " → ".join(route["path"])
+                    n_segs = len(route["segments"])
+                    st.markdown(
+                        f"""
+                        <div class="route-card">
+                            <span class="route-rank">{rank_colors[i]} Route {i+1}</span>
+                            <span class="route-time" style="float:right">{mins:.1f} min</span>
+                            <div class="route-path">{path_str}</div>
+                            <div style="margin-top:8px">
+                                <span class="metric-pill">⛓ {n_segs} segments</span>
+                                <span class="metric-pill">🤖 {route['model_used'].upper()}</span>
+                                <span class="metric-pill">⏱ {route['total_time_sec']:.0f} sec</span>
+                            </div>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                # Advanced Visualization
+                st.markdown("### 🗺️ Interactive Traffic & Route Map")
+                
+                with st.expander("🛠 Map Calibration (Research Initiative)"):
+                    st.info("SCATS coordinates often have slight offsets. Use these sliders to calibrate.")
+                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                
+                # Apply offset to coordinates
+                calibrated_coords = {
+                    nid: (lat + lat_offset, lon + lon_offset)
+                    for nid, (lat, lon) in result["node_coords"].items()
+                }
+
+                # Create and display Folium map
+                m = map_utils.create_traffic_map(
+                    edges=result["edges"],
+                    node_coords=calibrated_coords,
+                    edge_flow=result["edge_flow"],
+                    edge_weights=result["edge_weights"],
+                    center=calibrated_coords.get(next(iter(calibrated_coords)), (-37.83, 145.07))
+                )
+                
+                # Highlight paths
+                m = map_utils.highlight_routes(m, routes, calibrated_coords)
+                st_folium(m, width="100%", height=500, key="route_map")
+
+                with st.expander("🔎 Segment detail — Route 1"):
+                    seg_rows = []
+                    for seg in routes[0]["segments"]:
+                        seg_rows.append({
+                            "From": seg["from"],
+                            "To": seg["to"],
+                            "Flow (veh/hr)": f"{seg['predicted_flow_veh_per_hour']:.0f}" if seg["predicted_flow_veh_per_hour"] is not None else "—",
+                            "Time (sec)": f"{seg['travel_time_sec']:.1f}" if seg["travel_time_sec"] is not None else "—",
+                        })
+                    st.dataframe(pd.DataFrame(seg_rows), width="stretch")
+
+                st.markdown("---")
+                st.markdown("### 🌍 Global Traffic Overview (Boroondara Network)")
+                st.info("Predicted traffic flow for ALL known edges at the selected time.")
+                
+                # Create and display Global Map
+                gm = map_utils.create_network_overview_map(
+                    edges=result["edges"],
+                    node_coords=calibrated_coords,
+                    edge_flow=result["edge_flow"],
+                    zoom=13
+                )
+                st_folium(gm, width="100%", height=600, key="global_map")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — TRAIN MODELS
@@ -995,3 +1050,95 @@ with tab4:
             )
         else:
             st.markdown('<span class="badge-warn">○ graph_edges.csv missing</span>', unsafe_allow_html=True)
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 5 — TEST SUITE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+with tab5:
+    st.markdown("### 🧪 Automated Test Suite")
+    st.info("Run internal unit tests to verify system components (models, graph logic, etc.). Each test can be run against multiple model architectures.")
+    
+    test_dir = PROJECT_ROOT / "testing"
+    if not test_dir.exists():
+        st.error(f"Test directory not found: {test_dir}")
+    else:
+        test_files = sorted([f.name for f in test_dir.glob("testcase*.py")])
+        
+        col_t1, col_t2 = st.columns([1, 2])
+        with col_t1:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            st.markdown("**Test Configuration**")
+            to_run = st.multiselect("Select test cases", test_files, default=test_files[:3] if test_files else [])
+            models_to_test = st.multiselect("Models to verify", ["lstm", "gru", "bilstm", "transformer"], default=["lstm"])
+            run_all = st.button("🚀 Run Tests", key="run_tests_btn")
+            st.markdown("</div>", unsafe_allow_html=True)
+            
+        with col_t2:
+            if run_all and to_run and models_to_test:
+                results = []
+                import re
+                
+                # Global progress
+                total_steps = len(to_run) * len(models_to_test)
+                progress_bar = st.progress(0)
+                step_count = 0
+
+                for model_name in models_to_test:
+                    st.markdown(f"#### 🧠 Testing Model: `{model_name.upper()}`")
+                    for tf in to_run:
+                        step_count += 1
+                        progress_bar.progress(step_count / total_steps)
+                        
+                        with st.status(f"[{model_name.upper()}] Running {tf}...", expanded=False) as status:
+                            try:
+                                import subprocess
+                                # Run test case with --model argument
+                                res = subprocess.run(
+                                    [sys.executable, str(test_dir / tf), "--model", model_name],
+                                    capture_output=True,
+                                    text=True,
+                                    timeout=60
+                                )
+                                
+                                # Extract meaningful result using regex
+                                result_match = re.search(r"\[TC\d+\] Result:\s*(.*)", res.stdout)
+                                meaningful_result = result_match.group(1).strip() if result_match else "No explicit result found"
+                                
+                                # Determine pass/fail based on return code AND meaningful result
+                                if res.returncode == 0 and "FAILED" not in meaningful_result.upper():
+                                    status_val = "✅ PASSED"
+                                    st_state = "complete"
+                                else:
+                                    status_val = "❌ FAILED"
+                                    st_state = "error"
+
+                                results.append({
+                                    "Model": model_name.upper(),
+                                    "Test": tf,
+                                    "Status": status_val,
+                                    "Meaningful Result": meaningful_result
+                                })
+                                
+                                if res.stdout:
+                                    st.code(res.stdout, language="bash")
+                                if res.stderr:
+                                    st.error(f"Error output:\n{res.stderr}")
+                                
+                                status.update(label=f"[{model_name.upper()}] {tf} - {status_val}", state=st_state)
+                            except Exception as e:
+                                st.error(f"Failed to run {tf}: {e}")
+                                results.append({"Model": model_name.upper(), "Test": tf, "Status": "❌ ERROR", "Meaningful Result": str(e)})
+                
+                st.markdown("#### 📊 Execution Summary")
+                st.dataframe(pd.DataFrame(results), width="stretch")
+            else:
+                st.markdown(
+                    """
+                    <div style="text-align:center; padding:100px; color:#555;
+                                border:2px dashed rgba(255,255,255,0.1); border-radius:16px;">
+                        Configure test cases and models then click <b>Run Tests</b>.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )

@@ -30,14 +30,6 @@ def run_tc01(model_class, model_config: dict, seed: int = 42) -> bool:
     """
     print(f"\n>>> Running TC01: Model Initialization & Determinism Check (seed={seed})...")
 
-    # ------------------------------------------------------------------
-    # FIX: Create BOTH models before comparing — do not reset seed between
-    # them mid-way. The correct pattern is:
-    #   set seed → create model1 → set seed again → create model2 → compare
-    # This proves that starting from the same RNG state always yields the
-    # same weights, which is the actual definition of determinism.
-    # ------------------------------------------------------------------
-
     try:
         # --- Instantiation 1 ---
         torch.manual_seed(seed)
@@ -107,4 +99,39 @@ def run_tc01(model_class, model_config: dict, seed: int = 42) -> bool:
 
 
 if __name__ == "__main__":
-    print("TC01 script loaded.")
+    import argparse
+    import importlib
+    from main import load_config
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", default="lstm", choices=["lstm", "gru", "bilstm", "transformer"])
+    args = parser.parse_args()
+
+    cfg = load_config("config.ini")
+    model_name = args.model.lower()
+    
+    try:
+        # Load model class by name
+        module_name = f"models.{model_name}"
+        module = importlib.import_module(module_name)
+        
+        if model_name == "bilstm":
+            class_name = "BiLSTMModel"
+        elif model_name == "transformer":
+            class_name = "TransformerModel"
+        else:
+            class_name = f"{model_name.upper()}Model"
+            
+        model_class = getattr(module, class_name)
+        
+        # Determine instantiation config
+        if model_name == "transformer":
+            m_config = {"input_dim": 21, "d_model": 64, "nhead": 4, "num_layers": 2}
+        else:
+            m_config = {"input_dim": 21, "hidden_dim": 64, "num_layers": 2, "output_dim": 1}
+
+        success = run_tc01(model_class, m_config)
+        sys.exit(0 if success else 1)
+    except Exception as e:
+        print(f"[TC01] Result: FAILED — Execution error: {e}")
+        sys.exit(1)

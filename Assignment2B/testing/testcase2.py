@@ -96,4 +96,24 @@ def run_tc02(
 
 
 if __name__ == "__main__":
-    print("TC02 script loaded.")
+    import argparse
+    from main import _load_model_and_scaler, load_config
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model", default="lstm", choices=["lstm", "gru", "bilstm", "transformer"])
+    args = parser.parse_args()
+
+    cfg = load_config("config.ini")
+    try:
+        model, scaler, device = _load_model_and_scaler(cfg, model_name=args.model.lower())
+        
+        seq_len = cfg.getint("preprocessing", "lookback", fallback=12)
+        # Most of our models have an input_dim attribute. 
+        # If not, we fallback to our known feature count (21).
+        input_dim = getattr(model, 'input_dim', 21)
+            
+        success = run_tc02(model, seq_len, input_dim)
+        sys.exit(0 if success else 1)
+    except Exception as e:
+        print(f"[TC02] Result: FAILED — Execution error (weights missing?): {e}")
+        sys.exit(1)

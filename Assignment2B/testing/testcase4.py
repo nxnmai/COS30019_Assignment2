@@ -2,16 +2,16 @@ import os
 import sys
 import numpy as np
 import pandas as pd
+from typing import Tuple
 
 # --- AUTO-PATH SETTING ---
-# This block ensures that 'models' folder can be found regardless of where you run the script
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-# Now import will work perfectly
 from models.base_model import BaseTimeSeriesModel
+
 
 def run_tc04(model: BaseTimeSeriesModel, test_df: pd.DataFrame, x_test: np.ndarray, y_test: np.ndarray):
     """
@@ -45,6 +45,13 @@ def run_tc04(model: BaseTimeSeriesModel, test_df: pd.DataFrame, x_test: np.ndarr
     print(f"[TC04] Result: Peak Hour MAE = {mae:.4f}")
     return mae
 
-# Optional: Add a simple execution block if running this file directly
+
 if __name__ == "__main__":
-    print("TC04 script loaded.")
+    from testing.test_utils import get_test_args, load_test_context
+    args = get_test_args()
+    try:
+        ctx = load_test_context(args.model)
+        run_tc04(ctx["model"], ctx["test_df"], ctx["x_test"], ctx["y_test"])
+    except Exception as e:
+        print(f"[TC04] Result: FAILED (Execution Error: {e})")
+        sys.exit(1)

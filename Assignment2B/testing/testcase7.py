@@ -13,7 +13,6 @@ from models.base_model import BaseTimeSeriesModel
 def run_tc07(model: BaseTimeSeriesModel, x_test: np.ndarray) -> bool:
     """
     TC07: System Resilience Test (Missing Values).
-    Ensures the model/pipeline does not crash when encountering NaNs.
     """
     print("\n>>> Running TC07: Data Resilience Test...")
     
@@ -22,8 +21,7 @@ def run_tc07(model: BaseTimeSeriesModel, x_test: np.ndarray) -> bool:
     x_corrupted[0, 0, 0] = np.nan 
     
     try:
-        # Pre-processing step: impute NaNs with 0 or mean before prediction
-        # This simulates the system's ability to recover from sensor errors
+        # Pre-processing step: impute NaNs with 0 before prediction
         safe_input = np.nan_to_num(x_corrupted, nan=0.0)
         
         _ = model.predict(safe_input)
@@ -34,4 +32,11 @@ def run_tc07(model: BaseTimeSeriesModel, x_test: np.ndarray) -> bool:
         return False
 
 if __name__ == "__main__":
-    print("TC07 script loaded.")
+    from testing.test_utils import get_test_args, load_test_context
+    args = get_test_args()
+    try:
+        ctx = load_test_context(args.model)
+        run_tc07(ctx["model"], ctx["x_test"])
+    except Exception as e:
+        print(f"[TC07] Result: FAILED (Execution Error: {e})")
+        sys.exit(1)

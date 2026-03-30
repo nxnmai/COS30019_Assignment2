@@ -167,7 +167,13 @@ def train(
     best_val = min(history["val_loss"]) if history["val_loss"] else float("nan")
     print(f"\n[DONE] {model_name.upper()} training complete in {elapsed:.1f}s", flush=True)
     print(f"       Best val_loss = {best_val:.6f}", flush=True)
-    print(f"       Checkpoint saved -> {checkpoint_path}\n", flush=True)
+    # Save history for TC08 / Analysis
+    import json
+    history_path = checkpoint_dir / f"{model_name}_history.json"
+    with open(history_path, "w") as f:
+        json.dump(history, f)
+    
+    print(f"       History saved -> {history_path}\n", flush=True)
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:

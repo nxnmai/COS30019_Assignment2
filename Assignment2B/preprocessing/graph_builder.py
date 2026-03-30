@@ -40,20 +40,23 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 # Road name extraction
 # ---------------------------------------------------------------------------
 
-def _extract_road_name(location: str) -> str:
+def _extract_road_names(location: str) -> set[str]:
     """
-    Extract the primary road name from a SCATS location string.
+    Extract all primary road names from a SCATS location string.
 
     Examples:
-      "HIGH ST N of PEEL ST" → "HIGH ST"
-      "NEPEAN HWY S of OVERTON RD" → "NEPEAN HWY"
+      "HIGH ST & PEEL ST" → {"HIGH ST", "PEEL ST"}
+      "HIGH ST N of PEEL ST" → {"HIGH ST", "PEEL ST"}
+      "NEPEAN HWY S of OVERTON RD" → {"NEPEAN HWY", "OVERTON RD"}
     """
     location = str(location).strip().upper()
-    # Remove directional qualifiers: "N of", "S of", "NE of", etc.
-    parts = re.split(r"\b[NSEW]{1,2}\s+OF\b", location, flags=re.IGNORECASE)
-    if parts:
-        return parts[0].strip()
-    return location
+    # Replace separators like "&", "AND", "OF" with a common delimiter
+    # First, handle the directional "N OF", "S OF", etc.
+    location = re.sub(r"\b[NSEW]{1,2}\s+OF\b", " & ", location, flags=re.IGNORECASE)
+    # Then split by "&" or "AND"
+    parts = re.split(r"\s*&\s*|\s+AND\s+", location, flags=re.IGNORECASE)
+    roads = {p.strip() for p in parts if p.strip()}
+    return roads
 
 
 # ---------------------------------------------------------------------------
@@ -62,8 +65,8 @@ def _extract_road_name(location: str) -> str:
 
 def build_graph_edges(
     scats_df: pd.DataFrame,
-    proximity_km: float = 1.0,
-    close_km: float = 0.3,
+    proximity_km: float = 2.0,
+    close_km: float = 0.5,
 ) -> pd.DataFrame:
     """
     Build a directed edge list from the cleaned SCATS dataframe.
@@ -86,13 +89,13 @@ def build_graph_edges(
         .drop_duplicates(subset=["scats_number"])
         .copy()
     )
-    sites["road_name"] = sites["location"].apply(_extract_road_name)
+    sites["road_set"] = sites["location"].apply(_extract_road_names)
     sites = sites.reset_index(drop=True)
 
     ids = sites["scats_number"].tolist()
     lats = sites["nb_latitude"].to_numpy(dtype=float)
     lons = sites["nb_longitude"].to_numpy(dtype=float)
-    roads = sites["road_name"].tolist()
+    road_sets = sites["road_set"].tolist()
 
     edges: List[Tuple[str, str, float]] = []
     seen: set = set()
@@ -110,9 +113,10 @@ def build_graph_edges(
 
             dist = haversine_km(lats[i], lons[i], lats[j], lons[j])
 
-            connect = False
             # Rule 1: same road AND within proximity
-            if roads[i] and roads[j] and roads[i] == roads[j] and dist <= proximity_km:
+            # If any road in site A's set matches any road in site B's set
+            common_roads = road_sets[i].intersection(road_sets[j])
+            if common_roads and dist <= proximity_km:
                 connect = True
             # Rule 2: very close regardless of road (corner intersections)
             if dist <= close_km:
@@ -154,14 +158,14 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--proximity-km",
         type=float,
-        default=1.0,
-        help="Max same-road adjacency distance in km (default: 1.0)",
+        default=2.0,
+        help="Max same-road adjacency distance in km (default: 2.0)",
     )
     p.add_argument(
         "--close-km",
         type=float,
-        default=0.3,
-        help="Max unconditional adjacency distance in km (default: 0.3)",
+        default=0.5,
+        help="Max unconditional adjacency distance in km (default: 0.5)",
     )
     p.add_argument(
         "--raw-xls",
