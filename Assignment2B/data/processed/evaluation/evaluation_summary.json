@@ -4,7 +4,8 @@
   "evaluated_models": [
     "lstm",
     "gru",
-    "bilstm"
+    "bilstm",
+    "transformer"
   ],
   "metrics_csv": "F:\\github-project\\COS30019_Assignment2\\Assignment2B\\data\\processed\\evaluation\\metrics_table.csv",
   "plot_window": 288
