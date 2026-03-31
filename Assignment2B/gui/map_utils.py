@@ -36,8 +36,8 @@ def create_traffic_map(
     
     for edge in edges:
         # Support both class objects and dictionaries
-        u = getattr(edge, "source", edge.get("source") if isinstance(edge, dict) else None)
-        v = getattr(edge, "target", edge.get("target") if isinstance(edge, dict) else None)
+        u = str(getattr(edge, "source", edge.get("source") if isinstance(edge, dict) else ""))
+        v = str(getattr(edge, "target", edge.get("target") if isinstance(edge, dict) else ""))
         
         if u in node_coords and v in node_coords:
             p1 = node_coords[u]
@@ -51,7 +51,7 @@ def create_traffic_map(
             
             folium.PolyLine(
                 locations=[p1, p2],
-                color=color, weight=4, opacity=0.7,
+                color=color, weight=6, opacity=0.95,
                 tooltip=f"{u} -> {v}: {flow:.0f} veh/hr"
             ).add_to(network_layer)
 
@@ -87,8 +87,8 @@ def create_network_overview_map(
     # Add edges
     edge_layer = folium.FeatureGroup(name="Network Flow").add_to(m)
     for edge in edges:
-        u = getattr(edge, "source", edge.get("source") if isinstance(edge, dict) else None)
-        v = getattr(edge, "target", edge.get("target") if isinstance(edge, dict) else None)
+        u = str(getattr(edge, "source", edge.get("source") if isinstance(edge, dict) else ""))
+        v = str(getattr(edge, "target", edge.get("target") if isinstance(edge, dict) else ""))
         if u in node_coords and v in node_coords:
             flow = edge_flow.get((u, v), 0.0)
             if flow < 400: color = "green"
@@ -98,8 +98,24 @@ def create_network_overview_map(
             
             folium.PolyLine(
                 locations=[node_coords[u], node_coords[v]],
-                color=color, weight=3, opacity=0.5
+                color=color, weight=4, opacity=0.8,
+                tooltip=f"{u} -> {v}: {flow:.0f} veh/hr"
             ).add_to(edge_layer)
+
+    # Add a legend for traffic colors to the overview map too
+    legend_html = '''
+     <div style="position: fixed; 
+     bottom: 50px; right: 50px; width: 120px; height: 90px; 
+     border:2px solid grey; z-index:9999; font-size:11px;
+     background-color:white; opacity: 0.8; padding: 10px; border-radius:8px;">
+     <b>Flow (veh/hr)</b><br>
+     <i style="background:green; border-radius:50%; width:8px; height:8px; display:inline-block"></i> < 400<br>
+     <i style="background:gold; border-radius:50%; width:8px; height:8px; display:inline-block"></i> < 800<br>
+     <i style="background:orange; border-radius:50%; width:8px; height:8px; display:inline-block"></i> < 1200<br>
+     <i style="background:red; border-radius:50%; width:8px; height:8px; display:inline-block"></i> > 1200
+     </div>
+     '''
+    m.get_root().html.add_child(folium.Element(legend_html))
 
     folium.LayerControl().add_to(m)
     return m
@@ -117,7 +133,7 @@ def highlight_routes(
     
     for idx, route in enumerate(routes[:5]):
         path = route["path"]
-        points = [node_coords[node] for node in path if node in node_coords]
+        points = [node_coords[str(node)] for node in path if str(node) in node_coords]
         
         if len(points) < 2:
             continue
@@ -130,16 +146,19 @@ def highlight_routes(
         ).add_to(route_layer)
         
         # Markers for origin/destination (always visible)
+        # Markers for origin/destination (Add for the first route to avoid clutter)
         if idx == 0:
             folium.Marker(
                 location=points[0],
                 icon=folium.Icon(color='blue', icon='play', prefix='fa'),
-                tooltip=f"ORIGIN: {path[0]}"
+                tooltip=f"START: {path[0]}",
+                popup=f"Origin: {path[0]}"
             ).add_to(m)
             folium.Marker(
                 location=points[-1],
-                icon=folium.Icon(color='darkred', icon='flag-checkered', prefix='fa'),
-                tooltip=f"DESTINATION: {path[-1]}"
+                icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
+                tooltip=f"END: {path[-1]}",
+                popup=f"Destination: {path[-1]}"
             ).add_to(m)
 
     return m

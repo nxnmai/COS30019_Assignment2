@@ -40,15 +40,26 @@ def load_test_context(model_name: str):
     # 3. Load full dataframe for time-based tests (TC04, TC05)
     csv_rel_path = cfg.get("paths", "clean_scats_csv", fallback="data/processed/scats_oct2006_clean.csv")
     csv_path = PROJECT_ROOT / csv_rel_path
+    
     if csv_path.exists():
-        # Only load a slice or just enough to match x_test
-        # Usually x_test matches the end of the dataframe
         full_df = pd.read_csv(csv_path, parse_dates=["date_time"])
-        # We need to align the dataframe with the test set
-        # The test set is the last N days.
-        test_days = cfg.getint("preprocessing", "test_days", fallback=5)
-        # Simplified: take the last len(x_test) rows from the df
-        test_df = full_df.iloc[-len(x_test):].copy()
+        
+        # Determine the test window for ONE stream.
+        # We need to know how many samples each stream contributes to x_test.
+        num_streams = cfg.getint("preprocessing", "used_stream_count", fallback=1)
+        if num_streams > 0 and len(x_test) % num_streams == 0:
+            samples_per_stream = len(x_test) // num_streams
+        else:
+            samples_per_stream = len(x_test) # fallback
+
+        # Take any arbitrary stream (the first one) to get its 5-day test window
+        first_stream_id = full_df["movement_id"].iloc[0]
+        stream_data = full_df[full_df["movement_id"] == first_stream_id].copy()
+        
+        # The test_x windows are derived from the end of the stream data.
+        # Length is samples_per_stream.
+        test_df = stream_data.iloc[-samples_per_stream:].copy()
+        test_df = test_df.set_index("date_time")
     else:
         test_df = pd.DataFrame()
 

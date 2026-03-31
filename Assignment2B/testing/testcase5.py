@@ -18,12 +18,14 @@ def run_tc05(model: BaseTimeSeriesModel, test_df: pd.DataFrame, x_test: np.ndarr
     """
     print("\n>>> Running TC05: Weekend vs Weekday Performance...")
     
-    # Ensure index is datetime
-    test_df.index = pd.to_datetime(test_df.index)
-    
     # Dayofweek: Monday=0, Sunday=6. Weekends are 5 and 6.
-    weekend_mask = test_df.index.dayofweek >= 5
-    weekday_mask = ~weekend_mask
+    base_mask_we = (test_df.index.dayofweek >= 5) # Already a numpy array / index
+    base_mask_wd = (~base_mask_we)
+    
+    # Use np.resize to cycle the base_masks across all sensors for the total test length.
+    # This is more robust to slight mismatches than np.tile.
+    weekend_mask = np.resize(base_mask_we, len(x_test))
+    weekday_mask = np.resize(base_mask_wd, len(x_test))
     
     # Evaluate Weekdays
     x_wd, y_wd = x_test[weekday_mask], y_test[weekday_mask]

@@ -584,24 +584,31 @@ with tab1:
                     lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
                     lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
                 
-                # Apply offset to coordinates
+                # Apply offset to coordinates and normalize keys to string
                 calibrated_coords = {
-                    nid: (lat + lat_offset, lon + lon_offset)
+                    str(nid): (lat + lat_offset, lon + lon_offset)
                     for nid, (lat, lon) in result["node_coords"].items()
                 }
 
-                # Create and display Folium map
+                # Create and display Folium map with safe centering
+                map_center = (-37.83, 145.07) # Boroondara default
+                if calibrated_coords:
+                    map_center = next(iter(calibrated_coords.values()))
+
                 m = map_utils.create_traffic_map(
                     edges=result["edges"],
                     node_coords=calibrated_coords,
                     edge_flow=result["edge_flow"],
                     edge_weights=result["edge_weights"],
-                    center=calibrated_coords.get(next(iter(calibrated_coords)), (-37.83, 145.07))
+                    center=map_center
                 )
                 
                 # Highlight paths
                 m = map_utils.highlight_routes(m, routes, calibrated_coords)
-                st_folium(m, width="100%", height=500, key="route_map")
+                
+                # Use a unique key based on the route to force refresh
+                map_key = f"route_map_{hash(str(routes[0]['path']))}"
+                st_folium(m, width="100%", height=500, key=map_key)
 
                 with st.expander("🔎 Segment detail — Route 1"):
                     seg_rows = []
@@ -625,7 +632,26 @@ with tab1:
                     edge_flow=result["edge_flow"],
                     zoom=13
                 )
-                st_folium(gm, width="100%", height=600, key="global_map")
+                
+                # Add Origin/Destination markers to the global map for context
+                if routes and routes[0]["path"]:
+                    start_node = routes[0]["path"][0]
+                    end_node = routes[0]["path"][-1]
+                    if start_node in calibrated_coords:
+                        folium.Marker(
+                            location=calibrated_coords[start_node],
+                            icon=folium.Icon(color='blue', icon='play', prefix='fa'),
+                            tooltip=f"ORIGIN: {start_node}"
+                        ).add_to(gm)
+                    if end_node in calibrated_coords:
+                        folium.Marker(
+                            location=calibrated_coords[end_node],
+                            icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
+                            tooltip=f"DESTINATION: {end_node}"
+                        ).add_to(gm)
+
+                gm_key = f"global_map_{hash(str(result['routes'][0]['timestamp']))}"
+                st_folium(gm, width="100%", height=600, key=gm_key)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — TRAIN MODELS
@@ -1063,7 +1089,13 @@ with tab5:
     if not test_dir.exists():
         st.error(f"Test directory not found: {test_dir}")
     else:
-        test_files = sorted([f.name for f in test_dir.glob("testcase*.py")])
+        # Natural sorting for test files (1, 2, ..., 10)
+        import re
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower()
+                    for text in re.split(r'(\d+)', s)]
+        
+        test_files = sorted([f.name for f in test_dir.glob("testcase*.py")], key=natural_sort_key)
         
         col_t1, col_t2 = st.columns([1, 2])
         with col_t1:

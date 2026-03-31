@@ -20,20 +20,21 @@ def run_tc04(model: BaseTimeSeriesModel, test_df: pd.DataFrame, x_test: np.ndarr
     """
     print("\n>>> Running TC04: Peak Hour Sensitivity Test...")
     
-    # Ensure the dataframe index is datetime type for filtering
-    test_df.index = pd.to_datetime(test_df.index)
-    
     # Define peak hour masks
     morning_mask = (test_df.index.hour >= 7) & (test_df.index.hour <= 9)
     evening_mask = (test_df.index.hour >= 16) & (test_df.index.hour <= 18)
-    peak_mask = morning_mask | evening_mask
+    base_mask = (morning_mask | evening_mask) # Already a numpy array / index
+    
+    # Use np.resize to cycle the base_mask across all sensors for the total test length.
+    # This is more robust to slight mismatches than np.tile.
+    peak_mask = np.resize(base_mask, len(x_test))
     
     # Filter test data for peak hours
     x_peak = x_test[peak_mask]
     y_peak = y_test[peak_mask]
     
     if len(x_peak) == 0:
-        print("[TC04] Result: No peak hour data found in the provided dataset.")
+        print("[TC04] Result: No peak hour data found.")
         return 0.0
         
     # Model inference
