@@ -120,46 +120,77 @@ def create_network_overview_map(
     folium.LayerControl().add_to(m)
     return m
 
-def highlight_routes(
-    m: folium.Map,
+def create_focused_route_map(
     routes: List[Dict[str, Any]],
     node_coords: Dict[str, Tuple[float, float]],
+    edge_flow: Dict[Tuple[str, str], float],
+    center: Tuple[float, float] = (-37.83, 145.07),
+    zoom: int = 14,
 ) -> folium.Map:
     """
-    Highlights the selected routes on the map with distinctive colors and markers.
+    Creates a clean map showing ONLY the Top 5 routes, with segments 
+    colored by their actual predicted traffic flow.
     """
-    colors = ["#6c63ff", "#ff6363", "#48c6ef", "#9d63ff", "#ffbd63"]
-    route_layer = folium.FeatureGroup(name="Highlighted Routes").add_to(m)
+    m = folium.Map(location=center, zoom_start=zoom, tiles="cartodbpositron")
     
-    for idx, route in enumerate(routes[:5]):
-        path = route["path"]
-        points = [node_coords[str(node)] for node in path if str(node) in node_coords]
-        
-        if len(points) < 2:
-            continue
+    # Add the Traffic Legend (Consistent with overview)
+    legend_html = '''
+     <div style="position: fixed; 
+     bottom: 50px; left: 50px; width: 160px; height: 110px; 
+     border:2px solid grey; z-index:9999; font-size:12px;
+     background-color:white; opacity: 0.9; padding: 10px; border-radius:8px;">
+     <b>Traffic Flow (veh/hr)</b><br>
+     <i style="background:green; width:10px; height:10px; display:inline-block"></i> < 400 (Free)<br>
+     <i style="background:gold; width:10px; height:10px; display:inline-block"></i> 400-800 (Mod)<br>
+     <i style="background:orange; width:10px; height:10px; display:inline-block"></i> 800-1200 (Hvy)<br>
+     <i style="background:red; width:10px; height:10px; display:inline-block"></i> > 1200 (Congest)<br>
+     </div>
+     '''
+    m.get_root().html.add_child(folium.Element(legend_html))
+
+    route_layer = folium.FeatureGroup(name="Top 5 Routes (Traffic Colored)").add_to(m)
+    
+    # Process all unique segments across top 5 routes to avoid double drawing
+    seen_segments = set()
+    
+    for route in routes[:5]:
+        for seg in route.get("segments", []):
+            u, v = str(seg["from"]), str(seg["to"])
+            if (u, v) in seen_segments: continue
+            seen_segments.add((u, v))
             
-        color = colors[idx % len(colors)]
-        folium.PolyLine(
-            locations=points,
-            color=color, weight=8, opacity=0.8,
-            popup=f"Route {idx+1}: {route['total_time_min']:.1f} min"
-        ).add_to(route_layer)
+            if u in node_coords and v in node_coords:
+                flow = seg.get("predicted_flow_veh_per_hour", 0.0)
+                if flow is None: flow = 0.0
+                
+                if flow < 400: color = "green"
+                elif flow < 800: color = "gold"
+                elif flow < 1200: color = "orange"
+                else: color = "red"
+                
+                folium.PolyLine(
+                    locations=[node_coords[u], node_coords[v]],
+                    color=color, weight=7, opacity=0.9,
+                    tooltip=f"{u} -> {v}: {flow:.0f} veh/hr"
+                ).add_to(route_layer)
+
+    # Add high-visibility Start/End markers
+    if routes and routes[0]["path"]:
+        start_node = str(routes[0]["path"][0])
+        end_node = str(routes[0]["path"][-1])
         
-        # Markers for origin/destination (always visible)
-        # Markers for origin/destination
-        if idx == 0:
-            # Use distinct car for start and flag for finish
+        if start_node in node_coords:
             folium.Marker(
-                location=points[0],
-                icon=folium.Icon(color='blue', icon='car', prefix='fa'),
-                tooltip=f"ORIGIN: {path[0]}",
-                popup=f"Start Site {path[0]}"
+                location=node_coords[start_node],
+                icon=folium.Icon(color='blue', icon='play', prefix='fa'),
+                tooltip="ORIGIN"
             ).add_to(m)
+            
+        if end_node in node_coords:
             folium.Marker(
-                location=points[-1],
+                location=node_coords[end_node],
                 icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
-                tooltip=f"DESTINATION: {path[-1]}",
-                popup=f"Arrival Site {path[-1]}"
+                tooltip="DESTINATION"
             ).add_to(m)
 
     return m

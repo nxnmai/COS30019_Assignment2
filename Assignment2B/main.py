@@ -491,12 +491,18 @@ def find_routes(
     # Extraction of node coordinates for the map
     node_coords = {}
     
-    # Pre-process flow_df for definitive lookup parity
+    # De-fragment and pre-process flow_df for definitive lookup parity
+    flow_df = flow_df.copy()
     if "_scats_norm" not in flow_df.columns:
         flow_df["_scats_norm"] = flow_df["scats_number"].astype(str).apply(_normalize_node_id)
     
     # AGGRESSIVE PRE-POPULATION: Capture coordinates for EVERY site in the data
+    # (Filter: Ignore sites with invalid (0,0) or outside Melbourne)
     valid_data = flow_df.dropna(subset=["nb_latitude", "nb_longitude"])
+    valid_data = valid_data[
+        (valid_data["nb_latitude"].between(-38.5, -37.0)) &
+        (valid_data["nb_longitude"].between(144.5, 145.5))
+    ]
     for _, row in valid_data.drop_duplicates(subset=["_scats_norm"]).iterrows():
         nid = str(row["_scats_norm"])
         node_coords[nid] = (float(row["nb_latitude"]), float(row["nb_longitude"]))

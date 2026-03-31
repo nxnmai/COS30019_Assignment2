@@ -609,6 +609,11 @@ with tab1:
                         unsafe_allow_html=True,
                     )
 
+                with st.expander("🛠 Map Calibration (Research Initiative)"):
+                    st.info("SCATS coordinates often have slight offsets. Use these sliders to calibrate.")
+                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+
                 # Apply offset to coordinates and normalize keys to string
                 calibrated_coords = {
                     str(nid): (lat + lat_offset, lon + lon_offset)
@@ -620,24 +625,15 @@ with tab1:
                 if calibrated_coords:
                     map_center = next(iter(calibrated_coords.values()))
 
-                m = map_utils.create_traffic_map(
-                    edges=result["edges"],
+                m = map_utils.create_focused_route_map(
+                    routes=routes,
                     node_coords=calibrated_coords,
                     edge_flow=result["edge_flow"],
-                    edge_weights=result["edge_weights"],
                     center=map_center
                 )
                 
-                # Highlight paths
-                m = map_utils.highlight_routes(m, routes, calibrated_coords)
-                
                 # Primary Map for Top 5 routes
                 st_folium(m, width="100%", height=500, key="main_route_map")
-
-                with st.expander("🛠 Map Calibration (Research Initiative)"):
-                    st.info("SCATS coordinates often have slight offsets. Use these sliders to calibrate.")
-                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
-                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
 
                 with st.expander("🔎 Segment detail — Route 1"):
                     seg_rows = []
@@ -650,38 +646,6 @@ with tab1:
                         })
                     st.dataframe(pd.DataFrame(seg_rows), width="stretch")
 
-                st.markdown("---")
-                st.markdown("### 🌍 Global Traffic Overview (Boroondara Network)")
-                st.info("Predicted traffic flow for ALL known edges at the selected time.")
-                
-                # Create and display Global Map
-                gm = map_utils.create_network_overview_map(
-                    edges=result["edges"],
-                    node_coords=calibrated_coords,
-                    edge_flow=result["edge_flow"],
-                    zoom=13
-                )
-                
-                # Add Origin/Destination markers to the global map for context
-                if routes and routes[0]["path"]:
-                    start_node = routes[0]["path"][0]
-                    end_node = routes[0]["path"][-1]
-                    if start_node in calibrated_coords:
-                        folium.Marker(
-                            location=calibrated_coords[start_node],
-                            icon=folium.Icon(color='blue', icon='play', prefix='fa'),
-                            tooltip=f"ORIGIN: {start_node}"
-                        ).add_to(gm)
-                    if end_node in calibrated_coords:
-                        folium.Marker(
-                            location=calibrated_coords[end_node],
-                            icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
-                            tooltip=f"DESTINATION: {end_node}"
-                        ).add_to(gm)
-
-                # Secondary Map for Global Network
-                st_folium(gm, width="100%", height=600, key="global_traffic_overview_map")
-                
                 if not result.get("node_coords"):
                     st.warning("⚠️ **Network coordinates missing.** Your map is blank because the clean SCATS data doesn't contain site locations. Please remove your clean CSV and re-parse the raw Excel file.")
 
