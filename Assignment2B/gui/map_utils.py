@@ -174,7 +174,28 @@ def create_focused_route_map(
                     tooltip=f"{u} -> {v}: {flow:.0f} veh/hr"
                 ).add_to(route_layer)
 
-    # Add high-visibility Start/End markers
+    # Add Markers for all sites involved in the routes
+    unique_route_nodes = set()
+    for route in routes[:5]:
+        for node in route.get("path", []):
+            unique_route_nodes.add(str(node))
+
+    # Add intermediate node circles for tracking
+    for nid in unique_route_nodes:
+        if nid in node_coords:
+            folium.CircleMarker(
+                location=node_coords[nid],
+                radius=6,
+                color="black",
+                weight=2,
+                fill=True,
+                fill_color="white",
+                fill_opacity=1,
+                tooltip=f"SCATS Site {nid}",
+                z_index=1000
+            ).add_to(m)
+
+    # Overlayer high-visibility Start/End markers on top
     if routes and routes[0]["path"]:
         start_node = str(routes[0]["path"][0])
         end_node = str(routes[0]["path"][-1])
@@ -183,14 +204,16 @@ def create_focused_route_map(
             folium.Marker(
                 location=node_coords[start_node],
                 icon=folium.Icon(color='blue', icon='play', prefix='fa'),
-                tooltip="ORIGIN"
+                tooltip=f"ORIGIN: {start_node}",
+                z_index=2000
             ).add_to(m)
             
         if end_node in node_coords:
             folium.Marker(
                 location=node_coords[end_node],
                 icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
-                tooltip="DESTINATION"
+                tooltip=f"DESTINATION: {end_node}",
+                z_index=2000
             ).add_to(m)
 
     return m

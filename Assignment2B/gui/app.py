@@ -611,8 +611,8 @@ with tab1:
 
                 with st.expander("🛠 Map Calibration (Research Initiative)"):
                     st.info("SCATS coordinates often have slight offsets. Use these sliders to calibrate.")
-                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
-                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0013, step=0.0001, format="%.4f")
+                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0013, step=0.0001, format="%.4f")
 
                 # Apply offset to coordinates and normalize keys to string
                 calibrated_coords = {
