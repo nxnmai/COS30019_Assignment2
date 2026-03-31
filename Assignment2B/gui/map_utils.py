@@ -25,9 +25,9 @@ def create_traffic_map(
      background-color:white; opacity: 0.9; padding: 10px; border-radius:8px;">
      <b>Traffic Flow (veh/hr)</b><br>
      <i style="background:green; width:10px; height:10px; display:inline-block"></i> < 400 (Free)<br>
-     <i style="background:gold; width:10px; height:10px; display:inline-block"></i> 400-800 (Mod)<br>
-     <i style="background:orange; width:10px; height:10px; display:inline-block"></i> 800-1200 (Hvy)<br>
-     <i style="background:red; width:10px; height:10px; display:inline-block"></i> > 1200 (Cong)<br>
+     <i style="background:gold; width:10px; height:10px; display:inline-block"></i> 400-800 (Moderate)<br>
+     <i style="background:orange; width:10px; height:10px; display:inline-block"></i> 800-1200 (Heavy)<br>
+     <i style="background:red; width:10px; height:10px; display:inline-block"></i> > 1200 (Congested)<br>
      </div>
      '''
     m.get_root().html.add_child(folium.Element(legend_html))
