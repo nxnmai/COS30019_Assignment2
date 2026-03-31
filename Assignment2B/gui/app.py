@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import streamlit as st
+import folium
 from streamlit_folium import st_folium
 import map_utils
 
@@ -372,7 +373,8 @@ def _load_site_list() -> pd.DataFrame:
     raw_xls = _resolve(cfg, "raw_scats_xls")
 
     if clean_csv.exists():
-        df = pd.read_csv(clean_csv)
+        # Force site IDs to be strings to preserve leading zeros
+        df = pd.read_csv(clean_csv, dtype={"scats_number": str})
     elif raw_xls.exists():
         from preprocessing.data_loader import load_scats_data
         with st.spinner("Parsing raw SCATS data for the first time…"):
@@ -393,7 +395,7 @@ def _load_site_list() -> pd.DataFrame:
 
 def _site_options(sites: pd.DataFrame) -> List[str]:
     return [
-        f"{row.scats_number} — {row.location}"
+        f"{str(row.scats_number).zfill(4)} — {row.location}"
         for _, row in sites.iterrows()
     ]
 
@@ -504,6 +506,37 @@ with tab1:
                         st.session_state.route_result = None
 
         if not no_sites:
+            with st.expander("📊 Data Integrity Diagnostics"):
+                try:
+                    # Quick check on the current sites vs flow data
+                    from main import _load_clean_flow_data, _normalize_node_id
+                    fdf = _load_clean_flow_data(cfg)
+                    total_records = len(fdf)
+                    unique_sites = fdf["scats_number"].nunique()
+                    
+                    # Create normalized set for checking
+                    norm_ids = fdf["scats_number"].astype(str).apply(_normalize_node_id).unique()
+                    
+                    st.write(f"**Total Records:** `{total_records:,}`")
+                    st.write(f"**Unique SCATS IDs:** `{unique_sites}`")
+                    
+                    # Check for coordinates
+                    coord_sites = fdf.dropna(subset=["nb_latitude", "nb_longitude"])["scats_number"].nunique()
+                    st.write(f"**Sites with Coords:** `{coord_sites}` / `{unique_sites}`")
+                    
+                    # ID Format Check
+                    sample_id = norm_ids[0] if len(norm_ids)>0 else "N/A"
+                    st.write(f"**ID Format check:** `{sample_id}` (Should be 4 digits)")
+                    
+                    if coord_sites == 0:
+                        st.error("🚨 CRITICAL: No coordinates found in data. Maps will be blank.")
+                    elif coord_sites < unique_sites:
+                        st.warning(f"⚠️ Some sites ({unique_sites - coord_sites}) are missing coordinates.")
+                    else:
+                        st.success("✅ All sites have valid map coordinates.")
+                except Exception as ex:
+                    st.error(f"Diag failed: {ex}")
+
             with st.expander("🌐 Current Road Network Connectivity"):
                 st.markdown(
                     """
@@ -576,14 +609,6 @@ with tab1:
                         unsafe_allow_html=True,
                     )
 
-                # Advanced Visualization
-                st.markdown("### 🗺️ Interactive Traffic & Route Map")
-                
-                with st.expander("🛠 Map Calibration (Research Initiative)"):
-                    st.info("SCATS coordinates often have slight offsets. Use these sliders to calibrate.")
-                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
-                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
-                
                 # Apply offset to coordinates and normalize keys to string
                 calibrated_coords = {
                     str(nid): (lat + lat_offset, lon + lon_offset)
@@ -606,9 +631,13 @@ with tab1:
                 # Highlight paths
                 m = map_utils.highlight_routes(m, routes, calibrated_coords)
                 
-                # Use a unique key based on the route to force refresh
-                map_key = f"route_map_{hash(str(routes[0]['path']))}"
-                st_folium(m, width="100%", height=500, key=map_key)
+                # Primary Map for Top 5 routes
+                st_folium(m, width="100%", height=500, key="main_route_map")
+
+                with st.expander("🛠 Map Calibration (Research Initiative)"):
+                    st.info("SCATS coordinates often have slight offsets. Use these sliders to calibrate.")
+                    lat_offset = st.slider("Latitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
+                    lon_offset = st.slider("Longitude Offset", -0.01, 0.01, 0.0, step=0.0001, format="%.4f")
 
                 with st.expander("🔎 Segment detail — Route 1"):
                     seg_rows = []
@@ -650,8 +679,11 @@ with tab1:
                             tooltip=f"DESTINATION: {end_node}"
                         ).add_to(gm)
 
-                gm_key = f"global_map_{hash(str(result['routes'][0]['timestamp']))}"
-                st_folium(gm, width="100%", height=600, key=gm_key)
+                # Secondary Map for Global Network
+                st_folium(gm, width="100%", height=600, key="global_traffic_overview_map")
+                
+                if not result.get("node_coords"):
+                    st.warning("⚠️ **Network coordinates missing.** Your map is blank because the clean SCATS data doesn't contain site locations. Please remove your clean CSV and re-parse the raw Excel file.")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — TRAIN MODELS
@@ -1048,7 +1080,7 @@ with tab4:
 
     st.markdown("---")
     st.markdown("**🛠 Utility Actions**")
-    col_u1, col_u2, col_u3 = st.columns(3)
+    col_u1, col_u2, col_u3, col_u4 = st.columns(4)
     with col_u1:
         if st.button("🔁 Rebuild Graph Edges", key="rebuild_graph_btn"):
             with st.spinner("Building graph adjacency…"):
@@ -1056,17 +1088,52 @@ with tab4:
                     clean_csv = _resolve(cfg, "clean_scats_csv")
                     edges_csv = _resolve(cfg, "graph_edges_csv")
                     from preprocessing.graph_builder import build_graph_edges
-                    df = pd.read_csv(clean_csv)
+                    # Enforce string loading for graph building too
+                    df = pd.read_csv(clean_csv, dtype={"scats_number": str})
                     edge_df = build_graph_edges(df)
                     edge_df.to_csv(edges_csv, index=False)
                     st.success(f"✅ Built {len(edge_df)} edges → {edges_csv.name}")
                 except Exception as e:
                     st.error(f"Graph build failed: {e}")
     with col_u2:
+        if st.button("🔄 Total System Sync", key="reparse_data_btn", help="Clears data, graph, and cache to restore map connectivity."):
+            with st.spinner("🔄 Deep Sync: Clearing memory & rebuilding graph..."):
+                try:
+                    import importlib
+                    import main
+                    importlib.reload(main) # Force reload of coordinate logic
+                    
+                    clean_csv = _resolve(cfg, "clean_scats_csv")
+                    edges_csv = _resolve(cfg, "graph_edges_csv")
+                    raw_xls = _resolve(cfg, "raw_scats_xls")
+                    
+                    # 1. Delete old caches
+                    if clean_csv.exists(): clean_csv.unlink()
+                    if edges_csv.exists(): edges_csv.unlink()
+                    st.cache_data.clear()
+                    
+                    # 2. Re-parse SCATS data from XLS
+                    from preprocessing.data_loader import load_scats_data
+                    fdf = load_scats_data(raw_xls)
+                    fdf.to_csv(clean_csv, index=False)
+                    
+                    # 3. Automatically Rebuild Graph Edges
+                    from preprocessing.graph_builder import build_graph_edges
+                    edf = build_graph_edges(fdf)
+                    edf.to_csv(edges_csv, index=False)
+                    
+                    st.session_state.route_result = None
+                    st.session_state.route_dt = None
+                    
+                    st.success(f"✅ Deep Sync Complete! ({len(edf)} edges). Map link restored.")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Sync failed: {e}")
+    with col_u3:
         if st.button("🗑 Clear Cache", key="clear_cache_btn"):
             st.cache_data.clear()
             st.success("Cache cleared.")
-    with col_u3:
+    with col_u4:
         edges_csv = _resolve(cfg, "graph_edges_csv")
         if edges_csv.exists():
             edge_df_display = pd.read_csv(edges_csv)

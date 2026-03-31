@@ -119,7 +119,8 @@ def _load_clean_flow_data(cfg: configparser.ConfigParser) -> pd.DataFrame:
 
     if clean_csv.exists():
         try:
-            df = pd.read_csv(clean_csv, parse_dates=["date", "date_time"])
+            # Force scats_number to be string to preserve leading zeros (e.g., "0970")
+            df = pd.read_csv(clean_csv, parse_dates=["date", "date_time"], dtype={"scats_number": str})
         except ValueError:
             df = pd.read_csv(clean_csv)
             if "date" in df.columns:
@@ -131,6 +132,15 @@ def _load_clean_flow_data(cfg: configparser.ConfigParser) -> pd.DataFrame:
         clean_csv.parent.mkdir(parents=True, exist_ok=True)
         df.to_csv(clean_csv, index=False)
 
+        # Aggressively normalize SCATS IDs to 4-digit strings (e.g. 970.0 -> "0970")
+        df["scats_number"] = df["scats_number"].astype(str).apply(_normalize_node_id)
+        
+        # Ensure coordinates are numeric
+        if "nb_latitude" in df.columns:
+            df["nb_latitude"] = pd.to_numeric(df["nb_latitude"], errors="coerce")
+        if "nb_longitude" in df.columns:
+            df["nb_longitude"] = pd.to_numeric(df["nb_longitude"], errors="coerce")
+    
     for col in FLOW_COLUMNS:
         df[col] = pd.to_numeric(df[col], errors="coerce")
     return df
@@ -480,15 +490,41 @@ def find_routes(
 
     # Extraction of node coordinates for the map
     node_coords = {}
+    
+    # Pre-process flow_df for definitive lookup parity
+    if "_scats_norm" not in flow_df.columns:
+        flow_df["_scats_norm"] = flow_df["scats_number"].astype(str).apply(_normalize_node_id)
+    
+    # AGGRESSIVE PRE-POPULATION: Capture coordinates for EVERY site in the data
+    valid_data = flow_df.dropna(subset=["nb_latitude", "nb_longitude"])
+    for _, row in valid_data.drop_duplicates(subset=["_scats_norm"]).iterrows():
+        nid = str(row["_scats_norm"])
+        node_coords[nid] = (float(row["nb_latitude"]), float(row["nb_longitude"]))
+    
+    # PRE-POPULATE: Grab coordinates for ALL sites known in the traffic data first
+    # This ensures that even if edges are missing, we see the sites on the map!
+    unique_sites = flow_df.dropna(subset=["nb_latitude", "nb_longitude"]).drop_duplicates(subset=["_scats_norm"])
+    for _, row in unique_sites.iterrows():
+        nid = str(row["_scats_norm"])
+        node_coords[nid] = (float(row["nb_latitude"]), float(row["nb_longitude"]))
+    
+    # (Optional) Ensure route nodes specifically are covered (should already be from above)
     for edge in edges:
         for nid in (edge.source, edge.target):
-            if nid not in node_coords:
-                match = flow_df[flow_df["scats_number"] == nid]
+            target_nid = str(nid).strip()
+            if target_nid not in node_coords:
+                match = flow_df[flow_df["_scats_norm"] == target_nid]
                 if not match.empty:
-                    node_coords[nid] = (
-                        float(match.iloc[0]["nb_latitude"]),
-                        float(match.iloc[0]["nb_longitude"]),
-                    )
+                    valid_coords = match.dropna(subset=["nb_latitude", "nb_longitude"])
+                    if not valid_coords.empty:
+                        node_coords[target_nid] = (
+                            float(valid_coords.iloc[0]["nb_latitude"]),
+                            float(valid_coords.iloc[0]["nb_longitude"]),
+                        )
+                else:
+                    # Fallback for missing coordinates: search for ANY movement at this site
+                    # to increase robustness against slight ID variations in raw data
+                    pass
 
     return {
         "routes": results,

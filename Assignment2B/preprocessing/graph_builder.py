@@ -19,6 +19,25 @@ from typing import List, Tuple
 import numpy as np
 import pandas as pd
 
+import sys
+from pathlib import Path
+# Add project root to sys.path to allow importing from main
+_PROJ_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJ_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJ_ROOT))
+
+try:
+    from main import _normalize_node_id
+except ImportError:
+    # Fallback if main is not importable
+    import re
+    from typing import Any
+    def _normalize_node_id(value: Any) -> str:
+        text = str(value).strip()
+        if re.fullmatch(r"\d+(\.0+)?", text):
+            return f"{int(float(text)):04d}"
+        return text
+
 
 # ---------------------------------------------------------------------------
 # Haversine distance
@@ -66,7 +85,7 @@ def _extract_road_names(location: str) -> set[str]:
 def build_graph_edges(
     scats_df: pd.DataFrame,
     proximity_km: float = 2.0,
-    close_km: float = 0.5,
+    close_km: float = 0.1,  # Reduced from 0.5 to prevent dense star-clusters at intersections
 ) -> pd.DataFrame:
     """
     Build a directed edge list from the cleaned SCATS dataframe.
@@ -89,6 +108,18 @@ def build_graph_edges(
         .drop_duplicates(subset=["scats_number"])
         .copy()
     )
+    # Coordinate Filter: Ignore sites with invalid (0,0) or obviously wrong Melbourne coords
+    # Reasonable Boroondara/Melbourne bounds
+    lat_min, lat_max = -38.5, -37.0
+    lon_min, lon_max = 144.5, 145.5
+    
+    sites = sites[
+        (sites["nb_latitude"] > lat_min) & (sites["nb_latitude"] < lat_max) &
+        (sites["nb_longitude"] > lon_min) & (sites["nb_longitude"] < lon_max)
+    ]
+
+    # Ensure IDs are normalized to 4-digit strings for absolute parity with routing engine
+    sites["scats_number"] = sites["scats_number"].apply(_normalize_node_id)
     sites["road_set"] = sites["location"].apply(_extract_road_names)
     sites = sites.reset_index(drop=True)
 

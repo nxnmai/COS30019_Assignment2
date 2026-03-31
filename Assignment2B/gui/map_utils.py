@@ -51,7 +51,7 @@ def create_traffic_map(
             
             folium.PolyLine(
                 locations=[p1, p2],
-                color=color, weight=6, opacity=0.95,
+                color=color, weight=3, opacity=0.8,
                 tooltip=f"{u} -> {v}: {flow:.0f} veh/hr"
             ).add_to(network_layer)
 
@@ -98,7 +98,7 @@ def create_network_overview_map(
             
             folium.PolyLine(
                 locations=[node_coords[u], node_coords[v]],
-                color=color, weight=4, opacity=0.8,
+                color=color, weight=3, opacity=0.7,
                 tooltip=f"{u} -> {v}: {flow:.0f} veh/hr"
             ).add_to(edge_layer)
 
@@ -146,19 +146,20 @@ def highlight_routes(
         ).add_to(route_layer)
         
         # Markers for origin/destination (always visible)
-        # Markers for origin/destination (Add for the first route to avoid clutter)
+        # Markers for origin/destination
         if idx == 0:
+            # Use distinct car for start and flag for finish
             folium.Marker(
                 location=points[0],
-                icon=folium.Icon(color='blue', icon='play', prefix='fa'),
-                tooltip=f"START: {path[0]}",
-                popup=f"Origin: {path[0]}"
+                icon=folium.Icon(color='blue', icon='car', prefix='fa'),
+                tooltip=f"ORIGIN: {path[0]}",
+                popup=f"Start Site {path[0]}"
             ).add_to(m)
             folium.Marker(
                 location=points[-1],
                 icon=folium.Icon(color='red', icon='flag-checkered', prefix='fa'),
-                tooltip=f"END: {path[-1]}",
-                popup=f"Destination: {path[-1]}"
+                tooltip=f"DESTINATION: {path[-1]}",
+                popup=f"Arrival Site {path[-1]}"
             ).add_to(m)
 
     return m
