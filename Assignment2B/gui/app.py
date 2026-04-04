@@ -1,11 +1,3 @@
-"""
-TBRGS — Traffic-Based Route Guidance System
-Streamlit GUI: 4 tabs
-  1. Route Planner    — find top-5 routes between SCATS sites
-  2. Train Models     — train LSTM / GRU / BiLSTM / Transformer
-  3. Evaluate         — compare model metrics & view charts
-  4. Settings         — edit config.ini parameters
-"""
 from __future__ import annotations
 
 import configparser
@@ -30,7 +22,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="TBRGS — Traffic Route Guidance",
+    page_title="TBRGS - Traffic Route Guidance",
     page_icon="🚦",
     layout="wide",
     initial_sidebar_state="collapsed",
