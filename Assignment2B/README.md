@@ -13,7 +13,7 @@ Assignment2B/
 │   ├── raw/             # Original SCATS .xls files
 │   └── processed/       # Cleaned CSVs and generated road graphs
 ├── gui/
-│   ├── app.py           # Streamlit dashboard (Tabs: Planner, Train, Eval, Settings)
+│   ├── app.py           # Streamlit dashboard (Tabs: Route Planner, Train Models, Evaluate, Settings, Test Suite)
 │   └── map_utils.py     # High-fidelity Folium map rendering logic
 ├── models/              # Neural network architectures (PyTorch)
 ├── prediction/          # Travel time calculation and flow estimation
