@@ -1,4 +1,4 @@
-# Traffic-Based Route Guidance System (TBRGS) — Assignment 2B
+# Traffic-Based Route Guidance System (TBRGS) - Assignment 2B
 
 A comprehensive system for traffic flow prediction and optimal route guidance using deep learning (LSTM, GRU, BiLSTM, Transformer) and graph-based routing algorithms.
 
